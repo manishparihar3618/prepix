@@ -33,7 +33,7 @@ def missing_report(df: pd.DataFrame) -> pd.DataFrame:
     report = pd.DataFrame({
         "Column": df.columns,
         "Missing Values": missing_count.values,
-        "Missing Percentage": missing_percentage.values
+        "Missing Percentage(%)": missing_percentage.values
     })
 
     def get_status(percent):
@@ -46,7 +46,7 @@ def missing_report(df: pd.DataFrame) -> pd.DataFrame:
         else:
             return "High"
 
-    report["Status"] = report["Missing Percentage"].apply(get_status)
+    report["Status"] = report["Missing Percentage(%)"].apply(get_status)
 
     def get_suggestion(column, percent):
         if percent == 0:
@@ -66,12 +66,12 @@ def missing_report(df: pd.DataFrame) -> pd.DataFrame:
         get_suggestion(col, pct)
         for col, pct in zip(
             report["Column"],
-            report["Missing Percentage"]
+            report["Missing Percentage(%)"]
         )
     ]
 
     report = report.sort_values(
-        by="Missing Percentage",
+        by="Missing Percentage(%)",
         ascending=False
     ).reset_index(drop=True)
 
