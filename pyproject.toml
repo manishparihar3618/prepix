@@ -1,0 +1,23 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "prepix"
+version = "0.1.0"
+description = "A lightweight Python library for data preprocessing, quality checks, and ML utilities."
+readme = "README.md"
+requires-python = ">=3.9"
+license = { text = "MIT" }
+
+authors = [
+    { name = "Manish Parihar" }
+]
+
+dependencies = [
+    "pandas>=2.0.0",
+    "numpy>=1.24.0"
+]
+
+[project.urls]
+Homepage = "https://github.com/manishparihar3618/prepix"
