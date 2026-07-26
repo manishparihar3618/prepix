@@ -76,3 +76,9 @@ def missing_report(df: pd.DataFrame) -> pd.DataFrame:
     ).reset_index(drop=True)
 
     return report
+
+
+def column_summary(df):
+   """
+   Generate a column-wise summary of the dataset.
+   """
