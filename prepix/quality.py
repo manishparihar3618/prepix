@@ -78,7 +78,61 @@ def missing_report(df: pd.DataFrame) -> pd.DataFrame:
     return report
 
 
-def column_summary(df):
-   """
-   Generate a column-wise summary of the dataset.
-   """
+def column_summary(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Generate a column-wise summary of a pandas DataFrame.
+
+    Parameters
+    ----------
+    df : pandas.DataFrame
+        Input DataFrame.
+
+    Returns
+    -------
+    pandas.DataFrame
+        Summary of every column.
+    """
+
+    if not isinstance(df, pd.DataFrame):
+        raise TypeError("Input must be a pandas DataFrame.")
+
+    summary = []
+
+    for column in df.columns:
+
+        dtype = str(df[column].dtype)
+
+        missing = df[column].isnull().sum()
+
+        missing_percentage = round(
+            (missing / len(df)) * 100, 2
+        )
+
+        unique = df[column].nunique(dropna=True)
+
+        memory = df[column].memory_usage(deep=True)
+
+        if pd.api.types.is_numeric_dtype(df[column]):
+            suggested = "Numeric"
+
+        elif pd.api.types.is_datetime64_any_dtype(df[column]):
+            suggested = "Datetime"
+
+        elif unique == 2:
+            suggested = "Binary"
+
+        else:
+            suggested = "Categorical"
+
+        summary.append({
+            "Column": column,
+            "Data Type": dtype,
+            "Missing Values": missing,
+            "Missing Percentage(%)": missing_percentage,
+            "Unique Values": unique,
+            "Memory(Bytes)": memory,
+            "Suggested Type": suggested
+        })
+
+    return pd.DataFrame(summary)
+    
