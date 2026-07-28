@@ -1,10 +1,7 @@
 """
 Quality check utilities for Prepix.
 """
-
 import pandas as pd
-
-
 def missing_report(df: pd.DataFrame) -> pd.DataFrame:
     """
     Generate a missing value report.
