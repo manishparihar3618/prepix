@@ -5,7 +5,12 @@ Measures execution time across 1k, 10k, 100k rows and wide DataFrame (100+ cols)
 import time
 import numpy as np
 import pandas as pd
-from prepix.quality import column_summary, duplicate_report, missing_report
+from prepix.quality import (
+    column_summary,
+    duplicate_report,
+    missing_report,
+    unique_report,
+)
 
 
 def generate_benchmark_data(n_rows: int, n_cols: int = 10, random_seed: int = 42):
@@ -35,7 +40,7 @@ def generate_benchmark_data(n_rows: int, n_cols: int = 10, random_seed: int = 42
         else:
             # datetime
             base = pd.Timestamp("2024-01-01")
-            data[f"dt_col_{i}"] = [base + pd.Timedelta(days=int(x)) for x in np.random.randint(0, 100, size=n_rows)]
+            data[f"dt_col_{i}"] = [base + pd.Timedelta(days=int(x)) for x in np.random.randint(0, 1000, size=n_rows)]
 
     return pd.DataFrame(data)
 
@@ -57,6 +62,7 @@ def benchmark():
         _ = missing_report(df)
         _ = column_summary(df)
         _ = duplicate_report(df)
+        _ = unique_report(df)
 
         # Benchmark missing_report
         t0 = time.perf_counter()
@@ -79,6 +85,13 @@ def benchmark():
         t1 = time.perf_counter()
         avg_duplicate = (t1 - t0) / repeats * 1000.0
 
+        # Benchmark unique_report
+        t0 = time.perf_counter()
+        for _ in range(repeats):
+            _ = unique_report(df)
+        t1 = time.perf_counter()
+        avg_unique = (t1 - t0) / repeats * 1000.0
+
         results.append({
             "Scenario": name,
             "Rows": rows,
@@ -86,6 +99,7 @@ def benchmark():
             "missing_report (ms)": round(avg_missing, 2),
             "column_summary (ms)": round(avg_summary, 2),
             "duplicate_report (ms)": round(avg_duplicate, 2),
+            "unique_report (ms)": round(avg_unique, 2),
         })
 
     results_df = pd.DataFrame(results)

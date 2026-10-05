@@ -6,9 +6,10 @@ It aims to automate repetitive EDA and preprocessing tasks commonly performed be
 
 ## 🚀 Current Features
 
-- `missing_report()` — Analyze missing values and get basic preprocessing suggestions.
+- `missing_report()` — Analyze missing values, percentages, statuses, and preprocessing recommendations.
 - `column_summary()` — Get a quick overview of column types, missing values, unique values, memory usage, and suggested types.
 - `duplicate_report()` — Analyze duplicate rows, percentages, unique records, status, and recommendations.
+- `unique_report()` — Analyze uniqueness and cardinality per column, identifier detection, and encoding recommendations.
 
 ## 📦 Installation
 
@@ -37,6 +38,10 @@ print(missing)
 # Duplicate row analysis
 duplicates = pp.duplicate_report(df)
 print(duplicates)
+
+# Uniqueness & cardinality analysis
+uniqueness = pp.unique_report(df)
+print(uniqueness)
 ```
 
 ## 📊 Example
@@ -70,7 +75,17 @@ Total Rows | Duplicate Rows | Duplicate Percentage(%) | Unique Rows | Status    
 1000       | 25             | 2.50                    | 975         | Duplicates Found| Consider reviewing and removing duplicate records
 ```
 
-> **Note on duplicate counting:** A row is considered a duplicate if an identical row occurs earlier in the DataFrame (following pandas `df.duplicated()` semantics). The original DataFrame remains unmodified.
+### `unique_report()`
+
+Returns:
+
+```text
+Column | Data Type | Total Values | Unique Values | Unique Percentage(%) | Duplicate Values | Cardinality          | Status               | Suggestion
+ID     | int64     | 1000         | 1000          | 100.00               | 0                | Very High (Unique)   | Potential Identifier | Review whether this column is a unique identifier
+City   | str       | 1000         | 15            | 1.50                 | 985              | Low                  | Low Diversity        | Suitable for categorical encoding
+```
+
+> **Note on missing values in unique counting:** By default (`dropna=False`), `NaN`/null is counted as a distinct category if present. Pass `dropna=True` to exclude nulls from unique counts. The original DataFrame remains unmodified.
 
 ## 🎯 Project Goal
 

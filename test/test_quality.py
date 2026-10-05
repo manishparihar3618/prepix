@@ -6,7 +6,12 @@ import warnings
 import numpy as np
 import pandas as pd
 
-from prepix.quality import column_summary, duplicate_report, missing_report
+from prepix.quality import (
+    column_summary,
+    duplicate_report,
+    missing_report,
+    unique_report,
+)
 
 
 class TestQualityFunctions(unittest.TestCase):
@@ -341,6 +346,8 @@ class TestQualityFunctions(unittest.TestCase):
                     column_summary(inp)
                 with self.assertRaises(TypeError):
                     duplicate_report(inp)
+                with self.assertRaises(TypeError):
+                    unique_report(inp)
 
     def test_invalid_thresholds(self):
         with self.assertRaises(ValueError):
@@ -383,6 +390,10 @@ class TestQualityFunctions(unittest.TestCase):
                 orig_copy3 = df.copy(deep=True)
                 _ = duplicate_report(df)
                 pd.testing.assert_frame_equal(df, orig_copy3)
+
+                orig_copy4 = df.copy(deep=True)
+                _ = unique_report(df)
+                pd.testing.assert_frame_equal(df, orig_copy4)
 
 
 if __name__ == "__main__":

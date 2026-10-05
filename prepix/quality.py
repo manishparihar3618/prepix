@@ -2,7 +2,8 @@
 Quality and EDA utilities for Prepix.
 
 This module contains utilities for inspecting dataset quality,
-including missing-value analysis, column summaries, and duplicate detection.
+including missing-value analysis, column summaries, duplicate detection,
+and uniqueness/cardinality analysis.
 """
 import pandas as pd
 
@@ -302,3 +303,139 @@ def duplicate_report(df: pd.DataFrame) -> pd.DataFrame:
             }
         ]
     )
+
+
+def unique_report(df: pd.DataFrame, dropna: bool = False) -> pd.DataFrame:
+    """
+    Generate a uniqueness and cardinality report for every column in a DataFrame.
+
+    Parameters
+    ----------
+    df : pandas.DataFrame
+        Input DataFrame.
+
+    dropna : bool, default=False
+        Whether to exclude NaN/null values when counting unique values.
+        If False (default), NaN/null is counted as a distinct category if present.
+
+    Returns
+    -------
+    pandas.DataFrame
+        Report containing:
+        - Column
+        - Data Type
+        - Total Values
+        - Unique Values
+        - Unique Percentage(%)
+        - Duplicate Values
+        - Cardinality
+        - Status
+        - Suggestion
+
+    Notes
+    -----
+    Cardinality classifications:
+    - Constant: Exactly 1 unique value (Zero variance).
+    - Very High (Unique): 100% unique values (Potential unique identifier).
+    - Very High: >= 90% unique values (Near-unique / high diversity).
+    - High: 50% - 90% unique values.
+    - Medium: 10% - 50% unique values.
+    - Low: < 10% unique values.
+
+    The suggestions are heuristic recommendations and do not modify the input DataFrame.
+    """
+    _validate_dataframe(df)
+
+    if not isinstance(dropna, bool):
+        raise TypeError("dropna must be a boolean.")
+
+    if df.shape[1] == 0:
+        return pd.DataFrame(
+            columns=[
+                "Column",
+                "Data Type",
+                "Total Values",
+                "Unique Values",
+                "Unique Percentage(%)",
+                "Duplicate Values",
+                "Cardinality",
+                "Status",
+                "Suggestion",
+            ]
+        )
+
+    n_rows = len(df)
+    report_rows = []
+
+    for i in range(df.shape[1]):
+        column = df.columns[i]
+        series = df.iloc[:, i]
+        dtype_str = str(series.dtype)
+
+        if n_rows == 0:
+            report_rows.append(
+                {
+                    "Column": column,
+                    "Data Type": dtype_str,
+                    "Total Values": 0,
+                    "Unique Values": 0,
+                    "Unique Percentage(%)": 0.0,
+                    "Duplicate Values": 0,
+                    "Cardinality": "Empty",
+                    "Status": "Empty Column",
+                    "Suggestion": "No action needed",
+                }
+            )
+            continue
+
+        unique_count = int(series.nunique(dropna=dropna))
+        unique_pct = round((unique_count / n_rows) * 100, 2)
+        duplicate_count = n_rows - unique_count
+
+        if unique_count == 1:
+            cardinality = "Constant"
+            status = "Zero Variance"
+            suggestion = "Consider reviewing column; constant value across all rows"
+        elif unique_count == n_rows:
+            cardinality = "Very High (Unique)"
+            status = "Potential Identifier"
+            suggestion = "Review whether this column is a unique identifier"
+        elif unique_pct >= 90.0:
+            cardinality = "Very High"
+            status = "Near-Unique"
+            suggestion = "Review whether this column is an identifier or high-cardinality feature"
+        elif unique_pct >= 50.0:
+            cardinality = "High"
+            status = "High Diversity"
+            if pd.api.types.is_numeric_dtype(series) and not pd.api.types.is_bool_dtype(series):
+                suggestion = "Normal continuous numeric distribution"
+            else:
+                suggestion = "High cardinality categorical; review before one-hot encoding or grouping"
+        elif unique_pct >= 10.0:
+            cardinality = "Medium"
+            status = "Moderate Diversity"
+            suggestion = "Suitable for standard encoding or analysis"
+        else:
+            cardinality = "Low"
+            if unique_count == 2:
+                status = "Binary"
+                suggestion = "Suitable for binary encoding"
+            else:
+                status = "Low Diversity"
+                suggestion = "Suitable for categorical encoding"
+
+        report_rows.append(
+            {
+                "Column": column,
+                "Data Type": dtype_str,
+                "Total Values": n_rows,
+                "Unique Values": unique_count,
+                "Unique Percentage(%)": unique_pct,
+                "Duplicate Values": duplicate_count,
+                "Cardinality": cardinality,
+                "Status": status,
+                "Suggestion": suggestion,
+            }
+        )
+
+    return pd.DataFrame(report_rows)
