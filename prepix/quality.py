@@ -8,12 +8,9 @@ import pandas as pd
 
 
 def _validate_dataframe(df: pd.DataFrame) -> None:
-    """Validate that the input is a non-empty pandas DataFrame."""
+    """Validate that the input is a pandas DataFrame."""
     if not isinstance(df, pd.DataFrame):
         raise TypeError("Input must be a pandas DataFrame.")
-
-    if df.empty:
-        raise ValueError("Input DataFrame must contain at least one row.")
 
 
 def _get_suggested_type(series: pd.Series) -> str:
@@ -78,8 +75,13 @@ def missing_report(
 
     The input DataFrame is not modified.
     """
-
     _validate_dataframe(df)
+
+    if isinstance(low_threshold, bool) or not isinstance(low_threshold, (int, float)):
+        raise TypeError("low_threshold must be a numeric value.")
+
+    if isinstance(medium_threshold, bool) or not isinstance(medium_threshold, (int, float)):
+        raise TypeError("medium_threshold must be a numeric value.")
 
     if not 0 <= low_threshold <= 100:
         raise ValueError("low_threshold must be between 0 and 100.")
@@ -92,19 +94,24 @@ def missing_report(
             "low_threshold cannot be greater than medium_threshold."
         )
 
+    if df.shape[1] == 0:
+        return pd.DataFrame(
+            columns=[
+                "Column",
+                "Missing Values",
+                "Missing Percentage(%)",
+                "Status",
+                "Suggestion",
+            ]
+        )
+
+    n_rows = len(df)
     missing_count = df.isna().sum()
 
-    missing_percentage = (
-        (missing_count / len(df)) * 100
-    ).round(2)
-
-    report = pd.DataFrame(
-        {
-            "Column": df.columns,
-            "Missing Values": missing_count.to_numpy(),
-            "Missing Percentage(%)": missing_percentage.to_numpy(),
-        }
-    )
+    if n_rows == 0:
+        missing_percentage = pd.Series(0.0, index=df.columns)
+    else:
+        missing_percentage = ((missing_count / n_rows) * 100).round(2)
 
     def get_status(percent: float) -> str:
         if percent == 0:
@@ -116,13 +123,9 @@ def missing_report(
         else:
             return "High"
 
-    report["Status"] = report["Missing Percentage(%)"].apply(get_status)
-
-    def get_suggestion(column: str, percent: float) -> str:
+    def get_suggestion(series: pd.Series, percent: float) -> str:
         if percent == 0:
             return "No Action Needed"
-
-        series = df[column]
 
         if percent > medium_threshold:
             return "Review Before Imputation"
@@ -132,19 +135,28 @@ def missing_report(
 
         if (
             pd.api.types.is_object_dtype(series)
-            or pd.api.types.is_categorical_dtype(series)
+            or pd.api.types.is_string_dtype(series)
+            or isinstance(series.dtype, pd.CategoricalDtype)
         ):
             return "Consider Mode Imputation"
 
         return "Review Column"
 
-    report["Suggestion"] = [
-        get_suggestion(column, percentage)
-        for column, percentage in zip(
-            report["Column"],
-            report["Missing Percentage(%)"],
-        )
+    # Use positional indexing (iloc) to safely handle duplicate column names
+    suggestions = [
+        get_suggestion(df.iloc[:, i], missing_percentage.iloc[i])
+        for i in range(df.shape[1])
     ]
+
+    report = pd.DataFrame(
+        {
+            "Column": list(df.columns),
+            "Missing Values": missing_count.to_numpy(),
+            "Missing Percentage(%)": missing_percentage.to_numpy(),
+            "Status": [get_status(p) for p in missing_percentage],
+            "Suggestion": suggestions,
+        }
+    )
 
     return (
         report
@@ -183,18 +195,31 @@ def column_summary(df: pd.DataFrame) -> pd.DataFrame:
     The suggested type is a heuristic classification.
     It does not modify the original DataFrame.
     """
-
     _validate_dataframe(df)
 
+    if df.shape[1] == 0:
+        return pd.DataFrame(
+            columns=[
+                "Column",
+                "Data Type",
+                "Missing Values",
+                "Missing Percentage(%)",
+                "Unique Values",
+                "Memory(Bytes)",
+                "Suggested Type",
+            ]
+        )
+
+    n_rows = len(df)
     summary = []
 
-    for column in df.columns:
-        series = df[column]
+    for i in range(df.shape[1]):
+        column = df.columns[i]
+        series = df.iloc[:, i]
 
         missing = int(series.isna().sum())
-        missing_percentage = round(
-            (missing / len(df)) * 100,
-            2,
+        missing_percentage = (
+            round((missing / n_rows) * 100, 2) if n_rows > 0 else 0.0
         )
 
         unique = int(series.nunique(dropna=True))
