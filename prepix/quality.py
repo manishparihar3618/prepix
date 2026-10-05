@@ -2,7 +2,7 @@
 Quality and EDA utilities for Prepix.
 
 This module contains utilities for inspecting dataset quality,
-including missing-value analysis and column-level summaries.
+including missing-value analysis, column summaries, and duplicate detection.
 """
 import pandas as pd
 
@@ -240,3 +240,65 @@ def column_summary(df: pd.DataFrame) -> pd.DataFrame:
         )
 
     return pd.DataFrame(summary)
+
+
+def duplicate_report(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Generate a summary report of duplicate rows in a pandas DataFrame.
+
+    Parameters
+    ----------
+    df : pandas.DataFrame
+        Input DataFrame.
+
+    Returns
+    -------
+    pandas.DataFrame
+        Report containing:
+        - Total Rows
+        - Duplicate Rows
+        - Duplicate Percentage(%)
+        - Unique Rows
+        - Status
+        - Suggestion
+
+    Notes
+    -----
+    A row is considered a duplicate if an identical row occurs earlier
+    in the DataFrame (following pandas `df.duplicated()` semantics).
+
+    The input DataFrame is not modified.
+    """
+    _validate_dataframe(df)
+
+    total_rows = len(df)
+    if total_rows == 0:
+        duplicate_rows = 0
+        duplicate_percentage = 0.0
+        unique_rows = 0
+        status = "No Duplicates"
+        suggestion = "No action required"
+    else:
+        duplicate_rows = int(df.duplicated().sum())
+        duplicate_percentage = round((duplicate_rows / total_rows) * 100, 2)
+        unique_rows = total_rows - duplicate_rows
+
+        if duplicate_rows == 0:
+            status = "No Duplicates"
+            suggestion = "No action required"
+        else:
+            status = "Duplicates Found"
+            suggestion = "Consider reviewing and removing duplicate records"
+
+    return pd.DataFrame(
+        [
+            {
+                "Total Rows": total_rows,
+                "Duplicate Rows": duplicate_rows,
+                "Duplicate Percentage(%)": duplicate_percentage,
+                "Unique Rows": unique_rows,
+                "Status": status,
+                "Suggestion": suggestion,
+            }
+        ]
+    )

@@ -8,6 +8,7 @@ It aims to automate repetitive EDA and preprocessing tasks commonly performed be
 
 - `missing_report()` — Analyze missing values and get basic preprocessing suggestions.
 - `column_summary()` — Get a quick overview of column types, missing values, unique values, memory usage, and suggested types.
+- `duplicate_report()` — Analyze duplicate rows, percentages, unique records, status, and recommendations.
 
 ## 📦 Installation
 
@@ -32,6 +33,10 @@ print(summary)
 # Missing-value analysis
 missing = pp.missing_report(df)
 print(missing)
+
+# Duplicate row analysis
+duplicates = pp.duplicate_report(df)
+print(duplicates)
 ```
 
 ## 📊 Example
@@ -41,9 +46,9 @@ print(missing)
 Returns information such as:
 
 ```text
-Column | Data Type | Missing Values | Unique Values | Suggested Type
-Age    | float64   | 2              | 50            | Numeric
-City   | object    | 1              | 10            | Categorical
+Column | Data Type | Missing Values | Missing Percentage(%) | Unique Values | Memory(Bytes) | Suggested Type
+Age    | float64   | 2              | 40.0                  | 3             | 40            | Numeric
+City   | str       | 1              | 20.0                  | 3             | 282           | Categorical
 ```
 
 ### `missing_report()`
@@ -51,10 +56,21 @@ City   | object    | 1              | 10            | Categorical
 Returns:
 
 ```text
-Column | Missing Values | Missing % | Status | Suggestion
-Age    | 2              | 4.0%      | Low    | Median Imputation
-City   | 1              | 2.0%      | Low    | Mode Imputation
+Column | Missing Values | Missing Percentage(%) | Status | Suggestion
+Age    | 2              | 40.0                  | High   | Review Before Imputation
+City   | 1              | 20.0                  | Medium | Consider Mode Imputation
 ```
+
+### `duplicate_report()`
+
+Returns:
+
+```text
+Total Rows | Duplicate Rows | Duplicate Percentage(%) | Unique Rows | Status          | Suggestion
+1000       | 25             | 2.50                    | 975         | Duplicates Found| Consider reviewing and removing duplicate records
+```
+
+> **Note on duplicate counting:** A row is considered a duplicate if an identical row occurs earlier in the DataFrame (following pandas `df.duplicated()` semantics). The original DataFrame remains unmodified.
 
 ## 🎯 Project Goal
 
@@ -69,13 +85,12 @@ The project is designed as a layer **on top of pandas and the Python ML ecosyste
 
 ## 🌱 Open-Source Approach
 
-Prepix will follow an iterative approach:
+Prepix follows an iterative approach:
 
 **Build MVP → Release → Get User Feedback → Improve → Repeat**
 
 Future versions may include:
 
-- Duplicate detection
 - Outlier detection
 - Data cleaning
 - Encoding

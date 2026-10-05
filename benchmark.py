@@ -5,7 +5,7 @@ Measures execution time across 1k, 10k, 100k rows and wide DataFrame (100+ cols)
 import time
 import numpy as np
 import pandas as pd
-from prepix.quality import column_summary, missing_report
+from prepix.quality import column_summary, duplicate_report, missing_report
 
 
 def generate_benchmark_data(n_rows: int, n_cols: int = 10, random_seed: int = 42):
@@ -24,8 +24,8 @@ def generate_benchmark_data(n_rows: int, n_cols: int = 10, random_seed: int = 42
             arr[np.random.rand(n_rows) < 0.2] = np.nan
             data[f"float_col_{i}"] = arr
         elif col_type == 2:
-            # string categories
-            cats = [f"cat_{k}" for k in range(10)]
+            # string categories (some duplicates)
+            cats = [f"cat_{k}" for k in range(5)]
             arr = np.random.choice(cats, size=n_rows).astype(object)
             arr[np.random.rand(n_rows) < 0.05] = None
             data[f"str_col_{i}"] = arr
@@ -35,7 +35,7 @@ def generate_benchmark_data(n_rows: int, n_cols: int = 10, random_seed: int = 42
         else:
             # datetime
             base = pd.Timestamp("2024-01-01")
-            data[f"dt_col_{i}"] = [base + pd.Timedelta(days=int(x)) for x in np.random.randint(0, 1000, size=n_rows)]
+            data[f"dt_col_{i}"] = [base + pd.Timedelta(days=int(x)) for x in np.random.randint(0, 100, size=n_rows)]
 
     return pd.DataFrame(data)
 
@@ -56,20 +56,28 @@ def benchmark():
         # Warm-up
         _ = missing_report(df)
         _ = column_summary(df)
+        _ = duplicate_report(df)
 
         # Benchmark missing_report
         t0 = time.perf_counter()
         for _ in range(repeats):
             _ = missing_report(df)
         t1 = time.perf_counter()
-        avg_missing = (t1 - t0) / repeats * 1000.0  # ms
+        avg_missing = (t1 - t0) / repeats * 1000.0
 
         # Benchmark column_summary
         t0 = time.perf_counter()
         for _ in range(repeats):
             _ = column_summary(df)
         t1 = time.perf_counter()
-        avg_summary = (t1 - t0) / repeats * 1000.0  # ms
+        avg_summary = (t1 - t0) / repeats * 1000.0
+
+        # Benchmark duplicate_report
+        t0 = time.perf_counter()
+        for _ in range(repeats):
+            _ = duplicate_report(df)
+        t1 = time.perf_counter()
+        avg_duplicate = (t1 - t0) / repeats * 1000.0
 
         results.append({
             "Scenario": name,
@@ -77,6 +85,7 @@ def benchmark():
             "Columns": cols,
             "missing_report (ms)": round(avg_missing, 2),
             "column_summary (ms)": round(avg_summary, 2),
+            "duplicate_report (ms)": round(avg_duplicate, 2),
         })
 
     results_df = pd.DataFrame(results)

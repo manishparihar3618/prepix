@@ -6,12 +6,12 @@ import warnings
 import numpy as np
 import pandas as pd
 
-from prepix.quality import column_summary, missing_report
+from prepix.quality import column_summary, duplicate_report, missing_report
 
 
 class TestQualityFunctions(unittest.TestCase):
     def setUp(self):
-        # Dataset A - Normal dataset
+        # Dataset A - Normal dataset (no duplicates)
         self.df_a = pd.DataFrame({
             "age": [25, 30, 35, 40, 45],
             "salary": [50000.0, 60000.0, 75000.0, 90000.0, 110000.0],
@@ -60,6 +60,24 @@ class TestQualityFunctions(unittest.TestCase):
             "category_col": pd.Categorical(["cat", "dog", "cat", None, "bird"]),
             "datetime_col": pd.date_range("2025-01-01", periods=5, freq="D"),
             "datetime_with_na": [pd.Timestamp("2025-01-01"), None, pd.Timestamp("2025-01-03"), None, pd.Timestamp("2025-01-05")]
+        })
+
+        # Duplicate Test Datasets
+        self.df_dup_one = pd.DataFrame({
+            "id": [1, 2, 3, 2],
+            "name": ["A", "B", "C", "B"]
+        })
+        self.df_dup_multiple = pd.DataFrame({
+            "x": [1, 2, 1, 2, 3, 1],
+            "y": ["a", "b", "a", "b", "c", "a"]
+        })
+        self.df_dup_all_subsequent = pd.DataFrame({
+            "col1": [10, 10, 10, 10],
+            "col2": ["same", "same", "same", "same"]
+        })
+        self.df_dup_with_nan = pd.DataFrame({
+            "num": [1.0, np.nan, 2.0, np.nan],
+            "cat": ["x", None, "y", None]
         })
 
     # ==========================================
@@ -165,6 +183,101 @@ class TestQualityFunctions(unittest.TestCase):
         self.assertEqual(len(summary), 121)
 
     # ==========================================
+    # FUNCTION TESTS: duplicate_report()
+    # ==========================================
+
+    def test_duplicate_report_no_duplicates(self):
+        rep = duplicate_report(self.df_a)
+        self.assertIsInstance(rep, pd.DataFrame)
+        expected_cols = ["Total Rows", "Duplicate Rows", "Duplicate Percentage(%)", "Unique Rows", "Status", "Suggestion"]
+        self.assertListEqual(list(rep.columns), expected_cols)
+        self.assertEqual(len(rep), 1)
+
+        row = rep.iloc[0]
+        self.assertEqual(row["Total Rows"], 5)
+        self.assertEqual(row["Duplicate Rows"], 0)
+        self.assertEqual(row["Duplicate Percentage(%)"], 0.0)
+        self.assertEqual(row["Unique Rows"], 5)
+        self.assertEqual(row["Status"], "No Duplicates")
+        self.assertEqual(row["Suggestion"], "No action required")
+
+    def test_duplicate_report_one_duplicate(self):
+        rep = duplicate_report(self.df_dup_one)
+        row = rep.iloc[0]
+        self.assertEqual(row["Total Rows"], 4)
+        self.assertEqual(row["Duplicate Rows"], 1)
+        self.assertEqual(row["Duplicate Percentage(%)"], 25.0)
+        self.assertEqual(row["Unique Rows"], 3)
+        self.assertEqual(row["Status"], "Duplicates Found")
+        self.assertEqual(row["Suggestion"], "Consider reviewing and removing duplicate records")
+
+    def test_duplicate_report_multiple_duplicates(self):
+        rep = duplicate_report(self.df_dup_multiple)
+        row = rep.iloc[0]
+        self.assertEqual(row["Total Rows"], 6)
+        # Unique: (1, 'a'), (2, 'b'), (3, 'c') -> 3 unique, 3 duplicates
+        self.assertEqual(row["Duplicate Rows"], 3)
+        self.assertEqual(row["Duplicate Percentage(%)"], 50.0)
+        self.assertEqual(row["Unique Rows"], 3)
+        self.assertEqual(row["Status"], "Duplicates Found")
+
+    def test_duplicate_report_all_duplicates_subsequent(self):
+        rep = duplicate_report(self.df_dup_all_subsequent)
+        row = rep.iloc[0]
+        self.assertEqual(row["Total Rows"], 4)
+        self.assertEqual(row["Duplicate Rows"], 3)
+        self.assertEqual(row["Duplicate Percentage(%)"], 75.0)
+        self.assertEqual(row["Unique Rows"], 1)
+        self.assertEqual(row["Status"], "Duplicates Found")
+
+    def test_duplicate_report_empty_dataframe(self):
+        # Empty with no columns
+        rep0 = duplicate_report(self.df_c_empty_no_cols)
+        self.assertEqual(len(rep0), 1)
+        row0 = rep0.iloc[0]
+        self.assertEqual(row0["Total Rows"], 0)
+        self.assertEqual(row0["Duplicate Rows"], 0)
+        self.assertEqual(row0["Duplicate Percentage(%)"], 0.0)
+        self.assertEqual(row0["Unique Rows"], 0)
+        self.assertEqual(row0["Status"], "No Duplicates")
+        self.assertEqual(row0["Suggestion"], "No action required")
+
+        # Empty with columns
+        rep_cols = duplicate_report(self.df_c_empty_with_cols)
+        self.assertEqual(len(rep_cols), 1)
+        row_c = rep_cols.iloc[0]
+        self.assertEqual(row_c["Total Rows"], 0)
+        self.assertEqual(row_c["Duplicate Rows"], 0)
+        self.assertEqual(row_c["Duplicate Percentage(%)"], 0.0)
+        self.assertEqual(row_c["Unique Rows"], 0)
+        self.assertEqual(row_c["Status"], "No Duplicates")
+
+    def test_duplicate_report_with_missing_values(self):
+        rep = duplicate_report(self.df_dup_with_nan)
+        row = rep.iloc[0]
+        # (np.nan, None) occurs twice, so 1 duplicate row
+        self.assertEqual(row["Total Rows"], 4)
+        self.assertEqual(row["Duplicate Rows"], 1)
+        self.assertEqual(row["Duplicate Percentage(%)"], 25.0)
+        self.assertEqual(row["Unique Rows"], 3)
+        self.assertEqual(row["Status"], "Duplicates Found")
+
+    def test_duplicate_report_mixed_types(self):
+        rep = duplicate_report(self.df_c_mixed_types)
+        row = rep.iloc[0]
+        self.assertEqual(row["Total Rows"], 4)
+        self.assertEqual(row["Duplicate Rows"], 0)
+        self.assertEqual(row["Unique Rows"], 4)
+        self.assertEqual(row["Status"], "No Duplicates")
+
+    def test_duplicate_report_large_columns(self):
+        rep = duplicate_report(self.df_d_large_cols)
+        row = rep.iloc[0]
+        self.assertEqual(row["Total Rows"], 50)
+        self.assertEqual(row["Duplicate Rows"], 0)
+        self.assertEqual(row["Unique Rows"], 50)
+
+    # ==========================================
     # EDGE CASE TESTS (Dataset C)
     # ==========================================
 
@@ -226,6 +339,8 @@ class TestQualityFunctions(unittest.TestCase):
                     missing_report(inp)
                 with self.assertRaises(TypeError):
                     column_summary(inp)
+                with self.assertRaises(TypeError):
+                    duplicate_report(inp)
 
     def test_invalid_thresholds(self):
         with self.assertRaises(ValueError):
@@ -253,6 +368,7 @@ class TestQualityFunctions(unittest.TestCase):
             self.df_c_single_col,
             self.df_d_large_cols,
             self.df_e_types,
+            self.df_dup_multiple,
         ]
         for i, df in enumerate(test_dfs):
             with self.subTest(df_index=i):
@@ -263,6 +379,10 @@ class TestQualityFunctions(unittest.TestCase):
                 orig_copy2 = df.copy(deep=True)
                 _ = column_summary(df)
                 pd.testing.assert_frame_equal(df, orig_copy2)
+
+                orig_copy3 = df.copy(deep=True)
+                _ = duplicate_report(df)
+                pd.testing.assert_frame_equal(df, orig_copy3)
 
 
 if __name__ == "__main__":
