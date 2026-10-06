@@ -31,7 +31,13 @@ def _get_suggested_type(series: pd.Series) -> str:
     if pd.api.types.is_datetime64_any_dtype(series):
         return "Datetime"
 
-    unique_values = series.nunique(dropna=True)
+    try:
+        unique_values = series.nunique(dropna=True)
+    except TypeError:
+        try:
+            unique_values = len(set(map(repr, series.dropna())))
+        except Exception:
+            unique_values = -1
 
     if unique_values == 2:
         return "Categorical (2 values)"
@@ -223,7 +229,13 @@ def column_summary(df: pd.DataFrame) -> pd.DataFrame:
             round((missing / n_rows) * 100, 2) if n_rows > 0 else 0.0
         )
 
-        unique = int(series.nunique(dropna=True))
+        try:
+            unique = int(series.nunique(dropna=True))
+        except TypeError:
+            try:
+                unique = int(len(set(map(repr, series.dropna()))))
+            except Exception:
+                unique = -1
 
         # deep=True gives a more useful estimate for object/string data.
         memory = int(series.memory_usage(index=False, deep=True))
@@ -280,7 +292,20 @@ def duplicate_report(df: pd.DataFrame) -> pd.DataFrame:
         status = "No Duplicates"
         suggestion = "No action required"
     else:
-        duplicate_rows = int(df.duplicated().sum())
+        try:
+            duplicate_rows = int(df.duplicated().sum())
+        except TypeError:
+            try:
+                # Map unhashable objects (lists, dicts, sets) to their string representations
+                map_fn = getattr(df, "map", getattr(df, "applymap", None))
+                if map_fn is not None:
+                    safe_df = map_fn(lambda x: repr(x) if isinstance(x, (list, dict, set)) else x)
+                    duplicate_rows = int(safe_df.duplicated().sum())
+                else:
+                    duplicate_rows = 0
+            except Exception:
+                duplicate_rows = 0
+
         duplicate_percentage = round((duplicate_rows / total_rows) * 100, 2)
         unique_rows = total_rows - duplicate_rows
 
@@ -388,7 +413,14 @@ def unique_report(df: pd.DataFrame, dropna: bool = False) -> pd.DataFrame:
             )
             continue
 
-        unique_count = int(series.nunique(dropna=dropna))
+        try:
+            unique_count = int(series.nunique(dropna=dropna))
+        except TypeError:
+            try:
+                target = series if not dropna else series.dropna()
+                unique_count = int(len(set(map(repr, target))))
+            except Exception:
+                unique_count = n_rows
         unique_pct = round((unique_count / n_rows) * 100, 2)
         duplicate_count = n_rows - unique_count
 
