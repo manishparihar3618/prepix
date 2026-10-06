@@ -13,6 +13,7 @@ from prepix import (
     column_summary,
     duplicate_report,
     missing_report,
+    numeric_summary,
     unique_report,
 )
 
@@ -346,6 +347,10 @@ class TestDatasetVarieties(unittest.TestCase):
                 copy4 = df.copy(deep=True)
                 _ = unique_report(df)
                 pd.testing.assert_frame_equal(df, copy4)
+
+                copy5 = df.copy(deep=True)
+                _ = numeric_summary(df)
+                pd.testing.assert_frame_equal(df, copy5)
 
 
 if __name__ == "__main__":

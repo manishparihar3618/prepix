@@ -9,6 +9,7 @@ from prepix.quality import (
     column_summary,
     duplicate_report,
     missing_report,
+    numeric_summary,
     unique_report,
 )
 
@@ -63,6 +64,7 @@ def benchmark():
         _ = column_summary(df)
         _ = duplicate_report(df)
         _ = unique_report(df)
+        _ = numeric_summary(df)
 
         # Benchmark missing_report
         t0 = time.perf_counter()
@@ -92,6 +94,13 @@ def benchmark():
         t1 = time.perf_counter()
         avg_unique = (t1 - t0) / repeats * 1000.0
 
+        # Benchmark numeric_summary
+        t0 = time.perf_counter()
+        for _ in range(repeats):
+            _ = numeric_summary(df)
+        t1 = time.perf_counter()
+        avg_numeric = (t1 - t0) / repeats * 1000.0
+
         results.append({
             "Scenario": name,
             "Rows": rows,
@@ -100,6 +109,7 @@ def benchmark():
             "column_summary (ms)": round(avg_summary, 2),
             "duplicate_report (ms)": round(avg_duplicate, 2),
             "unique_report (ms)": round(avg_unique, 2),
+            "numeric_summary (ms)": round(avg_numeric, 2),
         })
 
     results_df = pd.DataFrame(results)

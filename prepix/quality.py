@@ -3,8 +3,9 @@ Quality and EDA utilities for Prepix.
 
 This module contains utilities for inspecting dataset quality,
 including missing-value analysis, column summaries, duplicate detection,
-and uniqueness/cardinality analysis.
+uniqueness/cardinality analysis, and numerical feature summaries.
 """
+import numpy as np
 import pandas as pd
 
 
@@ -469,5 +470,123 @@ def unique_report(df: pd.DataFrame, dropna: bool = False) -> pd.DataFrame:
                 "Suggestion": suggestion,
             }
         )
+
+    return pd.DataFrame(report_rows)
+
+
+def numeric_summary(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Generate a statistical summary for all numerical columns in a DataFrame.
+
+    Parameters
+    ----------
+    df : pandas.DataFrame
+        Input DataFrame.
+
+    Returns
+    -------
+    pandas.DataFrame
+        Summary report containing one row per numerical column:
+        - Column: Name of the numerical column
+        - Data Type: String representation of the column's data type
+        - Count: Number of non-null (valid) numerical observations
+        - Missing Values: Number of missing/null (NaN) entries
+        - Mean: Arithmetic average of valid observations
+        - Median: 50th percentile of valid observations
+        - Std: Sample standard deviation (ddof=1)
+        - Min: Minimum valid numerical value
+        - Q1: 25th percentile of valid observations
+        - Q3: 75th percentile of valid observations
+        - Max: Maximum valid numerical value
+        - Range: Spread between Maximum and Minimum (Max - Min)
+
+    Notes
+    -----
+    - Numerical Column Detection: Includes standard integer, float, nullable integer,
+      and nullable float dtypes. Boolean and complex columns are treated as non-numerical
+      and excluded from the summary.
+    - Missing Values: Statistics are calculated ignoring NaN values. Columns with 0 valid
+      observations return NaN for statistical measures (Mean, Median, Std, Min, Q1, Q3,
+      Max, Range) without crashing or replacing with misleading zeros.
+    - Standard Deviation: Uses sample standard deviation with N - 1 degrees of freedom (ddof=1).
+      Columns with single valid observations return NaN for Std.
+    - Infinity: Infinite values (np.inf, -np.inf) are retained according to standard
+      Pandas semantics and not converted to NaN.
+    - The input DataFrame is not modified.
+    """
+    _validate_dataframe(df)
+
+    output_columns = [
+        "Column",
+        "Data Type",
+        "Count",
+        "Missing Values",
+        "Mean",
+        "Median",
+        "Std",
+        "Min",
+        "Q1",
+        "Q3",
+        "Max",
+        "Range",
+    ]
+
+    if df.shape[1] == 0:
+        return pd.DataFrame(columns=output_columns)
+
+    report_rows = []
+
+    for i in range(df.shape[1]):
+        column = df.columns[i]
+        series = df.iloc[:, i]
+
+        # Numerical detection: integer/float (including nullable), excluding bool and complex
+        if not pd.api.types.is_numeric_dtype(series) or pd.api.types.is_bool_dtype(series) or pd.api.types.is_complex_dtype(series):
+            continue
+
+        valid_count = int(series.count())
+        missing_count = int(series.isna().sum())
+
+        if valid_count == 0:
+            mean_val = np.nan
+            median_val = np.nan
+            std_val = np.nan
+            min_val = np.nan
+            q1_val = np.nan
+            q3_val = np.nan
+            max_val = np.nan
+            range_val = np.nan
+        else:
+            mean_val = series.mean()
+            median_val = series.median()
+            std_val = series.std() if valid_count > 1 else np.nan
+            min_val = series.min()
+            q1_val = series.quantile(0.25)
+            q3_val = series.quantile(0.75)
+            max_val = series.max()
+            try:
+                range_val = max_val - min_val
+            except Exception:
+                range_val = np.nan
+
+        report_rows.append(
+            {
+                "Column": column,
+                "Data Type": str(series.dtype),
+                "Count": valid_count,
+                "Missing Values": missing_count,
+                "Mean": mean_val,
+                "Median": median_val,
+                "Std": std_val,
+                "Min": min_val,
+                "Q1": q1_val,
+                "Q3": q3_val,
+                "Max": max_val,
+                "Range": range_val,
+            }
+        )
+
+    if not report_rows:
+        return pd.DataFrame(columns=output_columns)
 
     return pd.DataFrame(report_rows)
