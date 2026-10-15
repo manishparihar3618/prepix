@@ -5,6 +5,10 @@ This module contains utilities for inspecting dataset quality,
 including missing-value analysis, column summaries, duplicate detection,
 uniqueness/cardinality analysis, and numerical feature summaries.
 """
+from __future__ import annotations
+
+import warnings
+from typing import Any, Iterable, List, Optional, Sequence, Union
 import numpy as np
 import pandas as pd
 
@@ -15,11 +19,18 @@ def _validate_dataframe(df: pd.DataFrame) -> None:
         raise TypeError("Input must be a pandas DataFrame.")
 
 
-def _get_suggested_type(series: pd.Series) -> str:
+def _get_suggested_type(series: pd.Series, unique_count: Optional[int] = None) -> str:
     """
     Infer a high-level suggested data type for a column.
 
     This is a heuristic classification, not a conversion.
+
+    Parameters
+    ----------
+    series : pandas.Series
+        The column series to inspect.
+    unique_count : int, optional
+        Precomputed unique value count to avoid redundant scans.
     """
     if pd.api.types.is_bool_dtype(series):
         return "Binary"
@@ -32,13 +43,22 @@ def _get_suggested_type(series: pd.Series) -> str:
     if pd.api.types.is_datetime64_any_dtype(series):
         return "Datetime"
 
-    try:
-        unique_values = series.nunique(dropna=True)
-    except TypeError:
+    if pd.api.types.is_timedelta64_dtype(series):
+        return "Timedelta"
+
+    if isinstance(series.dtype, pd.PeriodDtype):
+        return "Period"
+
+    if unique_count is None:
         try:
-            unique_values = len(set(map(repr, series.dropna())))
-        except Exception:
-            unique_values = -1
+            unique_values = int(series.nunique(dropna=True))
+        except TypeError:
+            try:
+                unique_values = int(len(set(map(repr, series.dropna()))))
+            except Exception:
+                unique_values = -1
+    else:
+        unique_values = unique_count
 
     if unique_values == 2:
         return "Categorical (2 values)"
@@ -50,6 +70,7 @@ def missing_report(
     df: pd.DataFrame,
     low_threshold: float = 10.0,
     medium_threshold: float = 30.0,
+    only_missing: bool = False,
 ) -> pd.DataFrame:
     """
     Generate a missing-value report for a pandas DataFrame.
@@ -65,6 +86,9 @@ def missing_report(
     medium_threshold : float, default=30.0
         Maximum missing percentage considered "Medium".
         Values above this threshold are classified as "High".
+
+    only_missing : bool, default=False
+        If True, only columns with at least one missing value are included.
 
     Returns
     -------
@@ -87,9 +111,13 @@ def missing_report(
 
     if isinstance(low_threshold, bool) or not isinstance(low_threshold, (int, float)):
         raise TypeError("low_threshold must be a numeric value.")
+    if np.isnan(low_threshold):
+        raise ValueError("low_threshold cannot be NaN.")
 
     if isinstance(medium_threshold, bool) or not isinstance(medium_threshold, (int, float)):
         raise TypeError("medium_threshold must be a numeric value.")
+    if np.isnan(medium_threshold):
+        raise ValueError("medium_threshold cannot be NaN.")
 
     if not 0 <= low_threshold <= 100:
         raise ValueError("low_threshold must be between 0 and 100.")
@@ -102,16 +130,19 @@ def missing_report(
             "low_threshold cannot be greater than medium_threshold."
         )
 
+    if not isinstance(only_missing, bool):
+        raise TypeError("only_missing must be a boolean.")
+
+    output_columns = [
+        "Column",
+        "Missing Values",
+        "Missing Percentage(%)",
+        "Status",
+        "Suggestion",
+    ]
+
     if df.shape[1] == 0:
-        return pd.DataFrame(
-            columns=[
-                "Column",
-                "Missing Values",
-                "Missing Percentage(%)",
-                "Status",
-                "Suggestion",
-            ]
-        )
+        return pd.DataFrame(columns=output_columns)
 
     n_rows = len(df)
     missing_count = df.isna().sum()
@@ -138,13 +169,14 @@ def missing_report(
         if percent > medium_threshold:
             return "Review Before Imputation"
 
-        if pd.api.types.is_numeric_dtype(series):
+        if pd.api.types.is_numeric_dtype(series) and not pd.api.types.is_bool_dtype(series):
             return "Consider Median Imputation"
 
         if (
             pd.api.types.is_object_dtype(series)
             or pd.api.types.is_string_dtype(series)
             or isinstance(series.dtype, pd.CategoricalDtype)
+            or pd.api.types.is_bool_dtype(series)
         ):
             return "Consider Mode Imputation"
 
@@ -166,6 +198,9 @@ def missing_report(
         }
     )
 
+    if only_missing:
+        report = report[report["Missing Values"] > 0]
+
     return (
         report
         .sort_values(
@@ -177,7 +212,7 @@ def missing_report(
     )
 
 
-def column_summary(df: pd.DataFrame) -> pd.DataFrame:
+def column_summary(df: pd.DataFrame, dropna: bool = True) -> pd.DataFrame:
     """
     Generate a column-wise summary of a pandas DataFrame.
 
@@ -185,6 +220,11 @@ def column_summary(df: pd.DataFrame) -> pd.DataFrame:
     ----------
     df : pandas.DataFrame
         Input DataFrame.
+
+    dropna : bool, default=True
+        Whether to exclude NaN/null values when counting unique values.
+        If True (default), matches pandas Series.nunique(dropna=True).
+        If False, NaN/null is counted as a distinct category.
 
     Returns
     -------
@@ -204,6 +244,9 @@ def column_summary(df: pd.DataFrame) -> pd.DataFrame:
     It does not modify the original DataFrame.
     """
     _validate_dataframe(df)
+
+    if not isinstance(dropna, bool):
+        raise TypeError("dropna must be a boolean.")
 
     if df.shape[1] == 0:
         return pd.DataFrame(
@@ -231,10 +274,11 @@ def column_summary(df: pd.DataFrame) -> pd.DataFrame:
         )
 
         try:
-            unique = int(series.nunique(dropna=True))
+            unique = int(series.nunique(dropna=dropna))
         except TypeError:
             try:
-                unique = int(len(set(map(repr, series.dropna()))))
+                target = series if not dropna else series.dropna()
+                unique = int(len(set(map(repr, target))))
             except Exception:
                 unique = -1
 
@@ -249,14 +293,19 @@ def column_summary(df: pd.DataFrame) -> pd.DataFrame:
                 "Missing Percentage(%)": missing_percentage,
                 "Unique Values": unique,
                 "Memory(Bytes)": memory,
-                "Suggested Type": _get_suggested_type(series),
+                "Suggested Type": _get_suggested_type(series, unique_count=unique),
             }
         )
 
     return pd.DataFrame(summary)
 
 
-def duplicate_report(df: pd.DataFrame) -> pd.DataFrame:
+def duplicate_report(
+    df: pd.DataFrame,
+    subset: Optional[Union[Sequence[str], str]] = None,
+    keep: Union[str, bool] = "first",
+    return_records: bool = False,
+) -> pd.DataFrame:
     """
     Generate a summary report of duplicate rows in a pandas DataFrame.
 
@@ -264,6 +313,20 @@ def duplicate_report(df: pd.DataFrame) -> pd.DataFrame:
     ----------
     df : pandas.DataFrame
         Input DataFrame.
+
+    subset : sequence of column names or str, optional
+        Only consider certain columns for identifying duplicates.
+        If None, all columns are used.
+
+    keep : {'first', 'last', False}, default='first'
+        Determines which duplicates (if any) to mark:
+        - 'first': Mark duplicates as True except for the first occurrence.
+        - 'last': Mark duplicates as True except for the last occurrence.
+        - False: Mark all duplicates as True.
+
+    return_records : bool, default=False
+        If True, returns a DataFrame containing the duplicate records.
+        If False (default), returns the standard duplicate summary report.
 
     Returns
     -------
@@ -285,6 +348,26 @@ def duplicate_report(df: pd.DataFrame) -> pd.DataFrame:
     """
     _validate_dataframe(df)
 
+    if not isinstance(return_records, bool):
+        raise TypeError("return_records must be a boolean.")
+
+    if keep not in ("first", "last", False):
+        raise ValueError("keep must be one of 'first', 'last', or False.")
+
+    if subset is not None:
+        if isinstance(subset, str):
+            subset_cols = [subset]
+        elif hasattr(subset, "__iter__"):
+            subset_cols = list(subset)
+        else:
+            raise TypeError("subset must be a string, list of strings, or None.")
+
+        missing_cols = [col for col in subset_cols if col not in df.columns]
+        if missing_cols:
+            raise KeyError(f"Columns not found in DataFrame: {missing_cols}")
+    else:
+        subset_cols = None
+
     total_rows = len(df)
     if total_rows == 0:
         duplicate_rows = 0
@@ -292,19 +375,24 @@ def duplicate_report(df: pd.DataFrame) -> pd.DataFrame:
         unique_rows = 0
         status = "No Duplicates"
         suggestion = "No action required"
+        dup_mask = pd.Series([], dtype=bool)
     else:
         try:
-            duplicate_rows = int(df.duplicated().sum())
+            dup_mask = df.duplicated(subset=subset_cols, keep=keep)
+            duplicate_rows = int(dup_mask.sum())
         except TypeError:
             try:
                 # Map unhashable objects (lists, dicts, sets) to their string representations
                 map_fn = getattr(df, "map", getattr(df, "applymap", None))
                 if map_fn is not None:
                     safe_df = map_fn(lambda x: repr(x) if isinstance(x, (list, dict, set)) else x)
-                    duplicate_rows = int(safe_df.duplicated().sum())
+                    dup_mask = safe_df.duplicated(subset=subset_cols, keep=keep)
+                    duplicate_rows = int(dup_mask.sum())
                 else:
+                    dup_mask = pd.Series([False] * total_rows, index=df.index)
                     duplicate_rows = 0
             except Exception:
+                dup_mask = pd.Series([False] * total_rows, index=df.index)
                 duplicate_rows = 0
 
         duplicate_percentage = round((duplicate_rows / total_rows) * 100, 2)
@@ -316,6 +404,11 @@ def duplicate_report(df: pd.DataFrame) -> pd.DataFrame:
         else:
             status = "Duplicates Found"
             suggestion = "Consider reviewing and removing duplicate records"
+
+    if return_records:
+        if total_rows == 0:
+            return df.iloc[0:0].copy()
+        return df[dup_mask].copy()
 
     return pd.DataFrame(
         [
@@ -423,7 +516,14 @@ def unique_report(df: pd.DataFrame, dropna: bool = False) -> pd.DataFrame:
             except Exception:
                 unique_count = n_rows
         unique_pct = round((unique_count / n_rows) * 100, 2)
-        duplicate_count = n_rows - unique_count
+        valid_count = int(series.count())
+        duplicate_count = (n_rows - unique_count) if not dropna else max(0, valid_count - unique_count)
+
+        col_str = str(column).lower().strip()
+        is_id_name = any(
+            x in col_str.replace("-", "_").split("_")
+            for x in ["id", "key", "code", "num", "number"]
+        ) or col_str in ["id", "key", "code", "uuid", "guid"]
 
         if unique_count == 1:
             cardinality = "Constant"
@@ -432,16 +532,28 @@ def unique_report(df: pd.DataFrame, dropna: bool = False) -> pd.DataFrame:
         elif unique_count == n_rows:
             cardinality = "Very High (Unique)"
             status = "Potential Identifier"
-            suggestion = "Review whether this column is a unique identifier"
+            if pd.api.types.is_float_dtype(series):
+                suggestion = "Continuous numeric distribution with high uniqueness; review if feature or identifier"
+            else:
+                suggestion = "Review whether this column is a unique identifier"
         elif unique_pct >= 90.0:
             cardinality = "Very High"
             status = "Near-Unique"
-            suggestion = "Review whether this column is an identifier or high-cardinality feature"
+            if is_id_name or (pd.api.types.is_integer_dtype(series) and not pd.api.types.is_bool_dtype(series)):
+                suggestion = "Review whether this column is an identifier, sequence, or high-cardinality feature"
+            elif pd.api.types.is_float_dtype(series):
+                suggestion = "Continuous numeric distribution with high uniqueness"
+            else:
+                suggestion = "Review whether this column is an identifier or high-cardinality feature"
         elif unique_pct >= 50.0:
             cardinality = "High"
             status = "High Diversity"
-            if pd.api.types.is_numeric_dtype(series) and not pd.api.types.is_bool_dtype(series):
-                suggestion = "Normal continuous numeric distribution"
+            if is_id_name:
+                suggestion = "High uniqueness discrete values; review whether this column is an identifier or key"
+            elif pd.api.types.is_float_dtype(series):
+                suggestion = "High uniqueness numeric distribution; review distribution spread"
+            elif pd.api.types.is_numeric_dtype(series) and not pd.api.types.is_bool_dtype(series):
+                suggestion = "High uniqueness discrete numeric values; review distribution"
             else:
                 suggestion = "High cardinality categorical; review before one-hot encoding or grouping"
         elif unique_pct >= 10.0:
@@ -474,7 +586,11 @@ def unique_report(df: pd.DataFrame, dropna: bool = False) -> pd.DataFrame:
     return pd.DataFrame(report_rows)
 
 
-def numeric_summary(df: pd.DataFrame) -> pd.DataFrame:
+def numeric_summary(
+    df: pd.DataFrame,
+    extended: bool = False,
+    percentiles: Optional[Sequence[float]] = None,
+) -> pd.DataFrame:
     """
     Generate a statistical summary for all numerical columns in a DataFrame.
 
@@ -482,6 +598,19 @@ def numeric_summary(df: pd.DataFrame) -> pd.DataFrame:
     ----------
     df : pandas.DataFrame
         Input DataFrame.
+
+    extended : bool, default=False
+        Whether to include extended statistical diagnostics:
+        - IQR (Interquartile Range)
+        - Skewness (Fisher-Pearson distribution asymmetry)
+        - Kurtosis (Fisher excess peakedness)
+        - Zeros (Count of zero values)
+        - Negatives (Count of negative values)
+        - Outliers (Count of observations beyond 1.5 * IQR)
+
+    percentiles : sequence of float, optional
+        Additional percentiles to calculate, e.g. [0.05, 0.95].
+        Values must be between 0.0 and 1.0.
 
     Returns
     -------
@@ -499,6 +628,8 @@ def numeric_summary(df: pd.DataFrame) -> pd.DataFrame:
         - Q3: 75th percentile of valid observations
         - Max: Maximum valid numerical value
         - Range: Spread between Maximum and Minimum (Max - Min)
+        [If extended=True: IQR, Skewness, Kurtosis, Zeros, Negatives, Outliers]
+        [If percentiles: Corresponding percentile columns, e.g. P5, P95]
 
     Notes
     -----
@@ -506,17 +637,29 @@ def numeric_summary(df: pd.DataFrame) -> pd.DataFrame:
       and nullable float dtypes. Boolean and complex columns are treated as non-numerical
       and excluded from the summary.
     - Missing Values: Statistics are calculated ignoring NaN values. Columns with 0 valid
-      observations return NaN for statistical measures (Mean, Median, Std, Min, Q1, Q3,
-      Max, Range) without crashing or replacing with misleading zeros.
+      observations return NaN for statistical measures without crashing.
     - Standard Deviation: Uses sample standard deviation with N - 1 degrees of freedom (ddof=1).
       Columns with single valid observations return NaN for Std.
     - Infinity: Infinite values (np.inf, -np.inf) are retained according to standard
       Pandas semantics and not converted to NaN.
+    - Outlier Detection: Identifies observations falling outside [Q1 - 1.5*IQR, Q3 + 1.5*IQR].
     - The input DataFrame is not modified.
     """
     _validate_dataframe(df)
 
-    output_columns = [
+    if not isinstance(extended, bool):
+        raise TypeError("extended must be a boolean.")
+
+    validated_percentiles: List[float] = []
+    if percentiles is not None:
+        if not hasattr(percentiles, "__iter__") or isinstance(percentiles, (str, bytes)):
+            raise TypeError("percentiles must be a sequence of floats between 0 and 1.")
+        for p in percentiles:
+            if not isinstance(p, (int, float)) or isinstance(p, bool) or not (0.0 <= p <= 1.0):
+                raise ValueError(f"Percentile {p} must be a number between 0 and 1.")
+            validated_percentiles.append(float(p))
+
+    base_columns = [
         "Column",
         "Data Type",
         "Count",
@@ -530,6 +673,15 @@ def numeric_summary(df: pd.DataFrame) -> pd.DataFrame:
         "Max",
         "Range",
     ]
+
+    output_columns = list(base_columns)
+    if extended:
+        output_columns.extend(["IQR", "Skewness", "Kurtosis", "Zeros", "Negatives", "Outliers"])
+    for p in validated_percentiles:
+        p_pct = p * 100
+        p_col = f"P{int(p_pct)}" if p_pct.is_integer() else f"P{p_pct:.1f}"
+        if p_col not in output_columns:
+            output_columns.append(p_col)
 
     if df.shape[1] == 0:
         return pd.DataFrame(columns=output_columns)
@@ -547,46 +699,101 @@ def numeric_summary(df: pd.DataFrame) -> pd.DataFrame:
         valid_count = int(series.count())
         missing_count = int(series.isna().sum())
 
-        if valid_count == 0:
-            mean_val = np.nan
-            median_val = np.nan
-            std_val = np.nan
-            min_val = np.nan
-            q1_val = np.nan
-            q3_val = np.nan
-            max_val = np.nan
-            range_val = np.nan
-        else:
-            mean_val = series.mean()
-            median_val = series.median()
-            std_val = series.std() if valid_count > 1 else np.nan
-            min_val = series.min()
-            q1_val = series.quantile(0.25)
-            q3_val = series.quantile(0.75)
-            max_val = series.max()
-            try:
-                range_val = max_val - min_val
-            except Exception:
-                range_val = np.nan
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", category=RuntimeWarning)
 
-        report_rows.append(
-            {
-                "Column": column,
-                "Data Type": str(series.dtype),
-                "Count": valid_count,
-                "Missing Values": missing_count,
-                "Mean": mean_val,
-                "Median": median_val,
-                "Std": std_val,
-                "Min": min_val,
-                "Q1": q1_val,
-                "Q3": q3_val,
-                "Max": max_val,
-                "Range": range_val,
-            }
-        )
+            if valid_count == 0:
+                mean_val = np.nan
+                median_val = np.nan
+                std_val = np.nan
+                min_val = np.nan
+                q1_val = np.nan
+                q3_val = np.nan
+                max_val = np.nan
+                range_val = np.nan
+                iqr_val = np.nan
+                skew_val = np.nan
+                kurt_val = np.nan
+                zeros_val = 0
+                negatives_val = 0
+                outliers_val = 0
+            else:
+                mean_val = series.mean()
+                median_val = series.median()
+                std_val = series.std() if valid_count > 1 else np.nan
+                min_val = series.min()
+                q1_val = series.quantile(0.25)
+                q3_val = series.quantile(0.75)
+                max_val = series.max()
+                try:
+                    range_val = max_val - min_val
+                except Exception:
+                    range_val = np.nan
+
+                if extended:
+                    try:
+                        iqr_val = q3_val - q1_val if (pd.notna(q3_val) and pd.notna(q1_val)) else np.nan
+                    except Exception:
+                        iqr_val = np.nan
+
+                    skew_val = float(series.skew()) if valid_count >= 3 else np.nan
+                    kurt_val = float(series.kurt()) if valid_count >= 4 else np.nan
+
+                    try:
+                        zeros_val = int((series == 0).sum())
+                    except Exception:
+                        zeros_val = 0
+
+                    try:
+                        negatives_val = int((series < 0).sum())
+                    except Exception:
+                        negatives_val = 0
+
+                    if pd.notna(iqr_val) and not np.isinf(iqr_val) and iqr_val >= 0:
+                        lower_bound = q1_val - 1.5 * iqr_val
+                        upper_bound = q3_val + 1.5 * iqr_val
+                        try:
+                            outliers_val = int(((series < lower_bound) | (series > upper_bound)).sum())
+                        except Exception:
+                            outliers_val = 0
+                    else:
+                        outliers_val = 0
+
+        row_dict: dict[str, Any] = {
+            "Column": column,
+            "Data Type": str(series.dtype),
+            "Count": valid_count,
+            "Missing Values": missing_count,
+            "Mean": mean_val,
+            "Median": median_val,
+            "Std": std_val,
+            "Min": min_val,
+            "Q1": q1_val,
+            "Q3": q3_val,
+            "Max": max_val,
+            "Range": range_val,
+        }
+
+        if extended:
+            row_dict["IQR"] = iqr_val
+            row_dict["Skewness"] = skew_val
+            row_dict["Kurtosis"] = kurt_val
+            row_dict["Zeros"] = zeros_val
+            row_dict["Negatives"] = negatives_val
+            row_dict["Outliers"] = outliers_val
+
+        for p in validated_percentiles:
+            p_pct = p * 100
+            p_col = f"P{int(p_pct)}" if p_pct.is_integer() else f"P{p_pct:.1f}"
+            row_dict[p_col] = series.quantile(p) if valid_count > 0 else np.nan
+
+        report_rows.append(row_dict)
 
     if not report_rows:
         return pd.DataFrame(columns=output_columns)
 
     return pd.DataFrame(report_rows)
+
+
+# Convenience imports for cross-module accessibility
+from .report import PrepixReport, report  # noqa: E402, F401

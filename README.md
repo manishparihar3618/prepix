@@ -1,15 +1,21 @@
 # Prepix
 
-**Prepix** is a lightweight Python library for **data quality checks, preprocessing, and ML preparation**.
+**Prepix** is a lightweight, high-performance Python library for **automated data quality assessment, exploratory data analysis (EDA), and machine learning data preparation**.
 
-It aims to automate repetitive EDA and preprocessing tasks commonly performed before Machine Learning.
+Built on top of pandas and numpy, Prepix automates repetitive analysis workflows through simple, predictable APIs while providing transparent, cautious recommendations.
 
-## 🚀 Current Features
+---
 
-- `missing_report()` — Analyze missing values, percentages, statuses, and preprocessing recommendations.
-- `column_summary()` — Get a quick overview of column types, missing values, unique values, memory usage, and suggested types.
-- `duplicate_report()` — Analyze duplicate rows, percentages, unique records, status, and recommendations.
-- `unique_report()` — Analyze uniqueness and cardinality per column, identifier detection, and encoding recommendations.
+## 🚀 Core Features
+
+- **`report(df)`** — **Unified High-Level Report**: Instant dataset health diagnosis combining dimensions, memory, missingness, duplicates, uniqueness, distributions, and prioritized actionable findings.
+- **`column_summary(df)`** — **Structural Column Overview**: Per-column data types, missing counts, uniqueness, deep memory footprint, and heuristic suggested types.
+- **`missing_report(df, ...)`** — **Missing-Value Audit**: Configurable severity thresholds, optional filtering of clean columns (`only_missing=True`), and conservative imputation suggestions.
+- **`duplicate_report(df, ...)`** — **Duplicate Record Analysis**: Full-row or column-subset duplicate audits (`subset=[...]`), duplicate percentages, and direct duplicate record inspection (`return_records=True`).
+- **`unique_report(df, ...)`** — **Uniqueness & Cardinality**: Cardinality classifications, constant-column detection, and distinction between continuous numeric variables and categorical/string identifiers.
+- **`numeric_summary(df, ...)`** — **Descriptive Statistics**: Comprehensive 5-number summaries, dispersion, range, and optional extended distribution diagnostics (`extended=True`: IQR, skewness, kurtosis, zero/negative counts, and 1.5x IQR Tukey outlier detection).
+
+---
 
 ## 📦 Installation
 
@@ -19,104 +25,169 @@ cd prepix
 pip install -e .
 ```
 
-## 💻 Usage
+---
+
+## 💻 Quickstart
+
+### 1. Unified Dataset Report
 
 ```python
-import prepix as pp
 import pandas as pd
+import prepix as pp
 
 df = pd.read_csv("data.csv")
 
-# Column overview
+# Generate the complete dataset report
+rep = pp.report(df)
+
+# Print a formatted diagnostic summary
+print(rep)
+
+# Or access specialized sub-reports individually:
+print(rep.overview)    # High-level dataset metrics
+print(rep.issues)      # Prioritized findings and warnings
+print(rep.missing)     # Missing values table
+print(rep.numeric)     # Numerical feature statistics
+print(rep.unique)      # Uniqueness and cardinality
+print(rep.duplicates)  # Duplicate analysis
+print(rep.columns)     # Column metadata and memory
+
+# Export report sections to JSON or dict:
+rep.to_json("report.json", indent=2)
+report_dict = rep.to_dict()
+```
+
+### 2. Specialized Analysis Functions
+
+#### Column Summary
+```python
 summary = pp.column_summary(df)
 print(summary)
+```
+*Columns returned:* `Column`, `Data Type`, `Missing Values`, `Missing Percentage(%)`, `Unique Values`, `Memory(Bytes)`, `Suggested Type`.
 
-# Missing-value analysis
-missing = pp.missing_report(df)
-print(missing)
+#### Missing Values Report
+```python
+# Standard report sorted by missing percentage descending
+missing = pp.missing_report(df, low_threshold=10.0, medium_threshold=30.0)
 
-# Duplicate row analysis
-duplicates = pp.duplicate_report(df)
-print(duplicates)
+# In wide datasets, focus only on columns with missing values:
+only_missing = pp.missing_report(df, only_missing=True)
+print(only_missing)
+```
+*Columns returned:* `Column`, `Missing Values`, `Missing Percentage(%)`, `Status`, `Suggestion`.
 
-# Uniqueness & cardinality analysis
-uniqueness = pp.unique_report(df)
-print(uniqueness)
+#### Duplicate Rows Report
+```python
+# Full-row duplicate summary
+dup_summary = pp.duplicate_report(df)
+print(dup_summary)
+
+# Check duplicates on specific key columns:
+dup_keys = pp.duplicate_report(df, subset=["customer_id", "order_date"])
+
+# Extract duplicate records for manual inspection:
+dup_records = pp.duplicate_report(df, return_records=True)
+print(dup_records.head())
 ```
 
-## 📊 Example
+#### Uniqueness & Cardinality
+```python
+# Uniqueness analysis (NaN counted as distinct category by default)
+unique_info = pp.unique_report(df, dropna=False)
 
-### `column_summary()`
-
-Returns information such as:
-
-```text
-Column | Data Type | Missing Values | Missing Percentage(%) | Unique Values | Memory(Bytes) | Suggested Type
-Age    | float64   | 2              | 40.0                  | 3             | 40            | Numeric
-City   | str       | 1              | 20.0                  | 3             | 282           | Categorical
+# Exclude NaN from unique counts:
+unique_no_nulls = pp.unique_report(df, dropna=True)
+print(unique_info)
 ```
+*Cardinality levels:* `Constant`, `Low`, `Medium`, `High`, `Very High`, `Very High (Unique)`.
 
-### `missing_report()`
+#### Numeric Distribution Summary
+```python
+# Standard 12-statistic summary:
+num_stats = pp.numeric_summary(df)
 
-Returns:
+# Extended diagnostics: IQR, Skewness, Kurtosis, Zeros, Negatives, Outliers:
+num_extended = pp.numeric_summary(df, extended=True)
 
-```text
-Column | Missing Values | Missing Percentage(%) | Status | Suggestion
-Age    | 2              | 40.0                  | High   | Review Before Imputation
-City   | 1              | 20.0                  | Medium | Consider Mode Imputation
+# Custom percentiles (e.g. 5th and 95th percentiles):
+num_percentiles = pp.numeric_summary(df, percentiles=[0.05, 0.95])
+print(num_extended)
 ```
-
-### `duplicate_report()`
-
-Returns:
-
-```text
-Total Rows | Duplicate Rows | Duplicate Percentage(%) | Unique Rows | Status          | Suggestion
-1000       | 25             | 2.50                    | 975         | Duplicates Found| Consider reviewing and removing duplicate records
-```
-
-### `unique_report()`
-
-Returns:
-
-```text
-Column | Data Type | Total Values | Unique Values | Unique Percentage(%) | Duplicate Values | Cardinality          | Status               | Suggestion
-ID     | int64     | 1000         | 1000          | 100.00               | 0                | Very High (Unique)   | Potential Identifier | Review whether this column is a unique identifier
-City   | str       | 1000         | 15            | 1.50                 | 985              | Low                  | Low Diversity        | Suitable for categorical encoding
-```
-
-> **Note on missing values in unique counting:** By default (`dropna=False`), `NaN`/null is counted as a distinct category if present. Pass `dropna=True` to exclude nulls from unique counts. The original DataFrame remains unmodified.
-
-## 🎯 Project Goal
-
-Prepix aims to automate common **EDA, data-preprocessing, and feature-engineering tasks** to make ML data preparation:
-
-- Faster
-- Simpler
-- More consistent
-- Reusable
-
-The project is designed as a layer **on top of pandas and the Python ML ecosystem**, not as a replacement for them.
-
-## 🌱 Open-Source Approach
-
-Prepix follows an iterative approach:
-
-**Build MVP → Release → Get User Feedback → Improve → Repeat**
-
-Future versions may include:
-
-- Outlier detection
-- Data cleaning
-- Encoding
-- Scaling
-- Feature engineering
-- ML preprocessing utilities
-
-## 📄 License
-
-MIT License
 
 ---
 
-**Prepix — Automate repetitive data-preparation tasks and focus on building better ML workflows.**
+## 📊 Sample Unified Report Output
+
+```text
+==============================================================
+                    PREPIX QUALITY REPORT                    
+==============================================================
+
+1. DATASET OVERVIEW
+--------------------------------------------------------------
+  • Rows                        : 1,000
+  • Columns                     : 10
+  • Total Cells                 : 10,000
+  • Memory Usage                : 142.50 KB
+  • Numeric Columns             : 5
+  • Categorical Columns         : 3
+  • Datetime Columns            : 1
+  • Boolean Columns             : 1
+  • Other Columns               : 0
+  • Total Missing Cells         : 150 (1.50%)
+  • Columns with Missing        : 2
+  • Duplicate Rows              : 12 (1.20%)
+
+2. KEY FINDINGS & ISSUES
+--------------------------------------------------------------
+  • [MEDIUM] Dataset: Duplicate Records — 12 duplicate rows (1.20%) detected
+  • [HIGH  ] Column 'Salary': High Missingness — 450 missing values (45.00%)
+  • [LOW   ] Column 'IsActive': Zero Variance (Constant) — Contains single constant value
+  • [LOW   ] Column 'CustomerID': Potential Identifier — 100% unique values (1000/1000)
+  • [LOW   ] Column 'Income': Potential Outliers — 14 values outside 1.5x IQR boundaries
+
+3. RECOMMENDED ACTIONS
+--------------------------------------------------------------
+  • Review and consider deduplicating using df.drop_duplicates()
+  • Investigate cause of missingness in 'Salary'; review before imputation or drop
+  • Consider dropping constant column 'IsActive' prior to ML modeling
+  • Verify whether 'CustomerID' is a primary key/ID; exclude from predictive features
+  • Inspect distribution and consider robust scaling or clipping for 'Income'
+==============================================================
+```
+
+---
+
+## 🛡️ Design Principles & Integrity
+
+1. **DataFrame Immutability**: All Prepix operations are strictly read-only; input DataFrames are never mutated, re-indexed, or modified in place.
+2. **Transparent Recommendations**: Suggestions are heuristic guidelines, not automated decisions. Prepix does not silently drop, impute, or cast columns.
+3. **Robust Handling of Edge Cases**:
+   - Empty DataFrames (0x0, 0xN, Nx0)
+   - Datasets with duplicate column headers or duplicate indexes
+   - Infinite values (`np.inf`, `-np.inf`) without runtime crashes or warnings
+   - Unhashable objects (lists, dictionaries) in cell values
+   - Wide (hundreds of columns) and tall (hundreds of thousands of rows) datasets
+
+---
+
+## 🧪 Running Tests & Benchmarks
+
+Run the test suite using Python's built-in `unittest`:
+
+```bash
+python -m unittest discover -s test -p "test_*.py" -v
+```
+
+Run performance benchmarks:
+
+```bash
+python benchmark.py
+```
+
+---
+
+## 📄 License
+
+MIT License. Copyright (c) Manish Parihar.

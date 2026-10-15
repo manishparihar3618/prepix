@@ -1,0 +1,18 @@
+ID,Name,Age,Gender,Department,Salary,Rating,Bonus,Company_Status
+101,Aman Sharma,28,Male,Engineering,75000.0,4.2,10000.0,Active
+102,Priya Patel,32,Female,HR,62000.0,4.8,,Active
+103,Rahul Verma,,Male,Sales,54000.0,3.5,,Active
+104,Sneha Rao,26,Female,Engineering,82000.0,4.6,12000.0,Active
+105,Vikram Singh,45,Male,Finance,95000.0,4.1,15000.0,Active
+106,Neha Gupta,29,Female,Marketing,58000.0,3.9,,Active
+107,Amit Kumar,35,Male,Engineering,88000.0,4.7,14000.0,Active
+108,Pooja Mishra,,Female,HR,60000.0,3.8,,Active
+109,Rohan Mehta,31,Male,Sales,52000.0,3.2,,Active
+110,Ananya Iyer,27,Female,Engineering,78000.0,4.5,11000.0,Active
+111,Karan Joshi,40,Male,Finance,92000.0,4.0,13000.0,Active
+112,Sunita Reddy,34,Female,Marketing,61000.0,3.7,,Active
+113,Deepak Sharma,38,Male,Engineering,85000.0,4.3,12500.0,Active
+114,Kavita Nair,25,Female,HR,51000.0,3.6,,Active
+115,Manish Parihar,29,Male,Engineering,90000.0,4.9,15000.0,Active
+110,Ananya Iyer,27,Female,Engineering,78000.0,4.5,11000.0,Active
+112,Sunita Reddy,34,Female,Marketing,61000.0,3.7,,Active

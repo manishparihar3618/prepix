@@ -1,15 +1,16 @@
 """
-Performance benchmarking script for prepix quality functions.
+Performance benchmarking script for prepix quality functions and unified report.
 Measures execution time across 1k, 10k, 100k rows and wide DataFrame (100+ cols).
 """
 import time
 import numpy as np
 import pandas as pd
-from prepix.quality import (
+from prepix import (
     column_summary,
     duplicate_report,
     missing_report,
     numeric_summary,
+    report,
     unique_report,
 )
 
@@ -65,6 +66,7 @@ def benchmark():
         _ = duplicate_report(df)
         _ = unique_report(df)
         _ = numeric_summary(df)
+        _ = report(df)
 
         # Benchmark missing_report
         t0 = time.perf_counter()
@@ -101,6 +103,13 @@ def benchmark():
         t1 = time.perf_counter()
         avg_numeric = (t1 - t0) / repeats * 1000.0
 
+        # Benchmark report()
+        t0 = time.perf_counter()
+        for _ in range(repeats):
+            _ = report(df)
+        t1 = time.perf_counter()
+        avg_report = (t1 - t0) / repeats * 1000.0
+
         results.append({
             "Scenario": name,
             "Rows": rows,
@@ -110,6 +119,7 @@ def benchmark():
             "duplicate_report (ms)": round(avg_duplicate, 2),
             "unique_report (ms)": round(avg_unique, 2),
             "numeric_summary (ms)": round(avg_numeric, 2),
+            "report (ms)": round(avg_report, 2),
         })
 
     results_df = pd.DataFrame(results)
