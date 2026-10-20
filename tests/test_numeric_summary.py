@@ -220,6 +220,14 @@ class TestNumericSummary(unittest.TestCase):
         self.assertEqual(row["Max"], np.inf)
         self.assertEqual(row["Range"], np.inf)
 
+        # Extended and percentiles with infinity values should not crash or emit unhandled warnings
+        res_ext = numeric_summary(df, extended=True, percentiles=[0.05, 0.95])
+        self.assertEqual(len(res_ext), 1)
+        row_ext = res_ext.iloc[0]
+        self.assertIn("P5", row_ext)
+        self.assertIn("P95", row_ext)
+        self.assertIn("IQR", row_ext)
+
     # =========================================================================
     # 4. COLUMN TYPE FILTERING (Only Numerical Included)
     # =========================================================================

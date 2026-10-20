@@ -11,6 +11,7 @@ from prepix import (
     missing_report,
     numeric_summary,
     report,
+    schema_report,
     unique_report,
 )
 
@@ -103,6 +104,15 @@ def benchmark():
         t1 = time.perf_counter()
         avg_numeric = (t1 - t0) / repeats * 1000.0
 
+        # Benchmark schema_report
+        # Build schema matching generated cols
+        bench_schema = {c: "numeric" if "int" in c or "float" in c else "string" if "str" in c else "boolean" if "bool" in c else "datetime" for c in df.columns[:5]}
+        t0 = time.perf_counter()
+        for _ in range(repeats):
+            _ = schema_report(df, schema=bench_schema)
+        t1 = time.perf_counter()
+        avg_schema = (t1 - t0) / repeats * 1000.0
+
         # Benchmark report()
         t0 = time.perf_counter()
         for _ in range(repeats):
@@ -114,6 +124,7 @@ def benchmark():
             "Scenario": name,
             "Rows": rows,
             "Columns": cols,
+            "schema_report (ms)": round(avg_schema, 2),
             "missing_report (ms)": round(avg_missing, 2),
             "column_summary (ms)": round(avg_summary, 2),
             "duplicate_report (ms)": round(avg_duplicate, 2),

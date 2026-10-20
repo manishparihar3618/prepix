@@ -158,6 +158,73 @@ class TestUniqueReport(unittest.TestCase):
         _ = unique_report(df)
         pd.testing.assert_frame_equal(df, orig)
 
+    # Test 12 — Column with [1, 2, None]
+    def test_one_two_none(self):
+        df = pd.DataFrame({"col": [1, 2, None]})
+        # dropna=False (default): 1, 2, None -> 3 unique
+        r_false = unique_report(df, dropna=False)
+        self.assertEqual(r_false.iloc[0]["Unique Values"], 3)
+        self.assertEqual(r_false.iloc[0]["Duplicate Values"], 0)
+
+        # dropna=True: 1, 2 -> 2 unique
+        r_true = unique_report(df, dropna=True)
+        self.assertEqual(r_true.iloc[0]["Unique Values"], 2)
+        self.assertEqual(r_true.iloc[0]["Duplicate Values"], 0)
+
+    # Test 13 — Column with only missing values
+    def test_all_missing_column(self):
+        df = pd.DataFrame({"empty_col": [None, None, np.nan]})
+        # dropna=False: 1 unique null category
+        r_false = unique_report(df, dropna=False)
+        self.assertEqual(r_false.iloc[0]["Unique Values"], 1)
+        self.assertEqual(r_false.iloc[0]["Duplicate Values"], 2)
+        self.assertEqual(r_false.iloc[0]["Cardinality"], "Constant")
+
+        # dropna=True: 0 valid unique values
+        r_true = unique_report(df, dropna=True)
+        self.assertEqual(r_true.iloc[0]["Unique Values"], 0)
+        self.assertEqual(r_true.iloc[0]["Duplicate Values"], 0)
+        self.assertEqual(r_true.iloc[0]["Cardinality"], "Empty")
+        self.assertEqual(r_true.iloc[0]["Status"], "All Missing")
+
+    # Test 14 — Column with repeated values and missing values
+    def test_repeated_with_missing(self):
+        df = pd.DataFrame({"val": [10, 10, 20, None, None]})
+        # dropna=False: 10, 20, None -> 3 unique, 2 duplicates (one 10, one None)
+        r_false = unique_report(df, dropna=False)
+        self.assertEqual(r_false.iloc[0]["Unique Values"], 3)
+        self.assertEqual(r_false.iloc[0]["Duplicate Values"], 2)
+
+        # dropna=True: 10, 20 -> 2 unique, 1 duplicate (one 10 out of 3 valid entries)
+        r_true = unique_report(df, dropna=True)
+        self.assertEqual(r_true.iloc[0]["Unique Values"], 2)
+        self.assertEqual(r_true.iloc[0]["Duplicate Values"], 1)
+
+    # Test 15 — Nullable integer, float, string, and categorical dtypes
+    def test_nullable_dtypes_semantics(self):
+        df = pd.DataFrame({
+            "null_int": pd.Series([1, 1, 2, None], dtype="Int64"),
+            "null_flt": pd.Series([1.5, None, 1.5, 3.0], dtype="Float64"),
+            "null_str": pd.Series(["a", "b", None, "a"], dtype="string"),
+            "cat_type": pd.Categorical(["red", "blue", None, "red"]),
+        })
+        r_false = unique_report(df, dropna=False)
+        self.assertEqual(dict(zip(r_false["Column"], r_false["Unique Values"])), {
+            "null_int": 3,  # 1, 2, <NA>
+            "null_flt": 3,  # 1.5, 3.0, <NA>
+            "null_str": 3,  # "a", "b", <NA>
+            "cat_type": 3,  # "red", "blue", <NA>
+        })
+
+        r_true = unique_report(df, dropna=True)
+        self.assertEqual(dict(zip(r_true["Column"], r_true["Unique Values"])), {
+            "null_int": 2,  # 1, 2
+            "null_flt": 2,  # 1.5, 3.0
+            "null_str": 2,  # "a", "b"
+            "cat_type": 2,  # "red", "blue"
+        })
+
 
 if __name__ == "__main__":
     unittest.main()
+

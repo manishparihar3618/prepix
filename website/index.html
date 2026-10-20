@@ -1,0 +1,481 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Prepix — Modern Data Quality & EDA Profiling for Python</title>
+  <meta name="description" content="Prepix is a lightweight, reliable Python library for automated data quality assessment, exploratory data analysis (EDA), and data contract validation.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+  <!-- Site Header -->
+  <header class="site-header">
+    <div class="container nav-wrap">
+      <a href="#" class="brand-logo">
+        <span>PREPIX</span>
+        <span class="logo-badge">v0.1.0 Beta</span>
+      </a>
+      <nav class="main-nav">
+        <a href="#overview">Overview</a>
+        <a href="#installation">Installation</a>
+        <a href="#documentation">Documentation</a>
+        <a href="#examples">Examples</a>
+        <a href="#about">About</a>
+      </nav>
+      <div class="header-cta">
+        <a href="https://github.com/manishparihar3618/prepix" target="_blank" rel="noopener noreferrer" class="btn-github">
+          <svg height="18" width="18" viewBox="0 0 16 16" fill="currentColor">
+            <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"></path>
+          </svg>
+          GitHub
+        </a>
+      </div>
+    </div>
+  </header>
+
+  <!-- Hero Section -->
+  <section class="hero" id="overview">
+    <div class="container">
+      <div class="hero-tagline-badge">
+        <span>⚡ Verified on Python 3.9 – 3.13 & pandas 2.0+</span>
+      </div>
+      <h1>Instant Dataset Health &amp; Quality Audits</h1>
+      <p class="hero-subtitle">
+        Automate missingness audits, duplicate tracking, cardinality analysis, distribution statistics, and schema contracts with transparent, read-only pandas profiling.
+      </p>
+
+      <div class="hero-buttons">
+        <a href="#installation" class="btn-primary">Get Started</a>
+        <a href="#documentation" class="btn-secondary">Function Reference</a>
+      </div>
+
+      <div class="hero-install-box">
+        <span class="prompt">$</span>
+        <span id="hero-cmd">pip install -e .</span>
+        <button class="copy-btn" data-target="hero-cmd" title="Copy install command">Copy</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- Feature Pillars -->
+  <section class="features">
+    <div class="container">
+      <div class="section-head">
+        <h2>Built for Data Integrity</h2>
+        <p>Prepix replaces repetitive inspection scripts with standardized, hardened quality routines.</p>
+      </div>
+
+      <div class="grid-3">
+        <div class="feature-card">
+          <div class="card-icon icon-cyan">🛡️</div>
+          <h3>DataFrame Immutability</h3>
+          <p>Zero in-place mutations. Your original DataFrame is never altered, index values are never modified, and columns are never silently cast.</p>
+        </div>
+
+        <div class="feature-card">
+          <div class="card-icon icon-indigo">📊</div>
+          <h3>Unified Quality Report</h3>
+          <p>Execute <code>pp.report(df)</code> to instantly generate a consolidated multi-dimensional health overview, prioritized issues, and component sub-reports.</p>
+        </div>
+
+        <div class="feature-card">
+          <div class="card-icon icon-emerald">🔍</div>
+          <h3>Schema Contract Audits</h3>
+          <p>Verify column presence, expected dtypes, nullability constraints, and uniqueness against your schema before running downstream models.</p>
+        </div>
+
+        <div class="feature-card">
+          <div class="card-icon icon-amber">📈</div>
+          <h3>Distribution Diagnostics</h3>
+          <p>Calculate 5-number summaries, sample standard deviations, IQR, Fisher-Pearson skewness, kurtosis, zero/negative counts, and Tukey outliers.</p>
+        </div>
+
+        <div class="feature-card">
+          <div class="card-icon icon-cyan">🏷️</div>
+          <h3>Cardinality Classification</h3>
+          <p>Automatically categorize columns across six cardinality tiers, detecting constant columns (zero variance) and primary key identifiers.</p>
+        </div>
+
+        <div class="feature-card">
+          <div class="card-icon icon-indigo">⚙️</div>
+          <h3>Zero Heavy Dependencies</h3>
+          <p>Built strictly on top of <code>pandas>=2.0.0</code> and <code>numpy>=1.24.0</code>. No heavy runtimes or bulky web servers required.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Installation Section -->
+  <section class="doc-section" id="installation">
+    <div class="container">
+      <div class="section-head">
+        <h2>Installation &amp; Requirements</h2>
+        <p>Simple setup for local development or production environments.</p>
+      </div>
+
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Dependency</th>
+            <th>Supported Range</th>
+            <th>Verified Version</th>
+            <th>Notes</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>Python</strong></td>
+            <td><code>&gt;= 3.9</code></td>
+            <td>3.11.15</td>
+            <td>Compatible with 3.9, 3.10, 3.11, 3.12, 3.13</td>
+          </tr>
+          <tr>
+            <td><strong>pandas</strong></td>
+            <td><code>&gt;= 2.0.0</code></td>
+            <td>3.0.6</td>
+            <td>Full support for pandas extension dtypes and modern nullable types</td>
+          </tr>
+          <tr>
+            <td><strong>numpy</strong></td>
+            <td><code>&gt;= 1.24.0</code></td>
+            <td>2.4.6</td>
+            <td>Compatible with NumPy 1.x and NumPy 2.x</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div class="code-panel">
+        <div class="panel-header">
+          <span style="font-weight: 600; font-size: 0.9rem;">Local Development Installation</span>
+          <button class="copy-btn">Copy</button>
+        </div>
+        <pre class="code-block"><code># Clone repository
+git clone https://github.com/manishparihar3618/prepix.git
+cd prepix
+
+# Create and activate virtual environment
+python -m venv .venv
+# On Windows:
+.\.venv\Scripts\Activate.ps1
+# On Linux/macOS:
+source .venv/bin/activate
+
+# Install in editable mode
+pip install -e .</code></pre>
+      </div>
+    </div>
+  </section>
+
+  <!-- Documentation Section -->
+  <section class="doc-section" id="documentation">
+    <div class="container doc-layout">
+      <!-- Sidebar -->
+      <aside class="doc-sidebar">
+        <div class="sidebar-menu">
+          <h4>Public Functions</h4>
+          <ul>
+            <li><a href="#func-report">report()</a></li>
+            <li><a href="#func-missing">missing_report()</a></li>
+            <li><a href="#func-column">column_summary()</a></li>
+            <li><a href="#func-duplicate">duplicate_report()</a></li>
+            <li><a href="#func-unique">unique_report()</a></li>
+            <li><a href="#func-numeric">numeric_summary()</a></li>
+            <li><a href="#func-schema">schema_report()</a></li>
+          </ul>
+          <h4>Container</h4>
+          <ul>
+            <li><a href="#prepix-report-class">PrepixReport</a></li>
+          </ul>
+        </div>
+      </aside>
+
+      <!-- Main Docs Content -->
+      <div class="doc-content">
+        <div class="section-head" style="text-align: left; margin-bottom: 2rem;">
+          <h2>API Function Reference</h2>
+          <p>Complete signatures, parameter options, return structures, and examples for all 7 public functions.</p>
+        </div>
+
+        <!-- 1. report() -->
+        <article class="function-doc-item" id="func-report">
+          <div class="func-header">
+            <h3>pp.report(df, ...)</h3>
+            <span class="badge-tag">Unified Diagnosis</span>
+          </div>
+          <p class="func-desc">
+            Produces a comprehensive dataset health diagnosis combining dimensions, memory, missingness, duplicate rows, cardinality, numerical distributions, prioritized findings, and actionable recommendations.
+          </p>
+          <div class="code-panel">
+            <div class="panel-header">
+              <div class="tab-group">
+                <button class="tab-btn active" data-tab="code-rep">Python Code</button>
+                <button class="tab-btn" data-tab="out-rep">CLI Output</button>
+              </div>
+              <button class="copy-btn">Copy</button>
+            </div>
+            <pre class="code-block tab-content" data-content="code-rep"><code>import prepix as pp
+import pandas as pd
+
+df = pd.read_csv("data.csv")
+report = pp.report(df)
+
+# Print human-readable summary
+print(report)
+
+# Access granular components:
+print(report.overview)
+print(report.issues)
+print(report.missing)
+print(report.numeric)</code></pre>
+            <pre class="code-block tab-content" data-content="out-rep" style="display: none;"><code>==============================================================
+                    PREPIX QUALITY REPORT                    
+==============================================================
+
+1. DATASET OVERVIEW
+--------------------------------------------------------------
+  - Rows                        : 17
+  - Columns                     : 9
+  - Total Cells                 : 153
+  - Memory Usage                : 5.08 KB
+  - Numeric Columns             : 5
+  - Categorical Columns         : 4
+  - Total Missing Cells         : 10 (6.54%)
+  - Duplicate Rows              : 2 (11.76%)
+
+2. KEY FINDINGS & ISSUES
+--------------------------------------------------------------
+  [MEDIUM] Dataset: Duplicate Records - 2 duplicate rows (11.76%) detected
+  [HIGH  ] Column 'Bonus': High Missingness - 8 missing values (47.06%)
+  [LOW   ] Column 'Company_Status': Zero Variance (Constant) - Single value
+
+3. RECOMMENDED ACTIONS
+--------------------------------------------------------------
+  * Review and consider deduplicating using df.drop_duplicates()
+  * Investigate cause of missingness in 'Bonus'; review before imputation
+==============================================================</code></pre>
+          </div>
+        </article>
+
+        <!-- 2. missing_report() -->
+        <article class="function-doc-item" id="func-missing">
+          <div class="func-header">
+            <h3>pp.missing_report(df, low_threshold=10.0, medium_threshold=30.0, only_missing=False)</h3>
+            <span class="badge-tag">Missing Values</span>
+          </div>
+          <p class="func-desc">
+            Calculates missing values count and percentage per column, categorizing missingness into severity tiers with conservative imputation suggestions.
+          </p>
+          <div class="code-panel">
+            <div class="panel-header">
+              <span style="font-size: 0.85rem; color: var(--text-muted);">missing_report Example</span>
+              <button class="copy-btn">Copy</button>
+            </div>
+            <pre class="code-block"><code># Audit only columns that contain missing values
+missing = pp.missing_report(df, only_missing=True)
+print(missing)
+# Output columns: Column, Missing Values, Missing Percentage(%), Status, Suggestion</code></pre>
+          </div>
+        </article>
+
+        <!-- 3. column_summary() -->
+        <article class="function-doc-item" id="func-column">
+          <div class="func-header">
+            <h3>pp.column_summary(df, dropna=True)</h3>
+            <span class="badge-tag">Structural Profiling</span>
+          </div>
+          <p class="func-desc">
+            Profiles every column's data type, missing counts, unique values, deep RAM footprint, and semantic suggested type (Binary, Numeric, Categorical, Datetime).
+          </p>
+          <div class="code-panel">
+            <div class="panel-header">
+              <span style="font-size: 0.85rem; color: var(--text-muted);">column_summary Example</span>
+              <button class="copy-btn">Copy</button>
+            </div>
+            <pre class="code-block"><code>summary = pp.column_summary(df)
+print(summary[["Column", "Data Type", "Unique Values", "Memory(Bytes)", "Suggested Type"]])</code></pre>
+          </div>
+        </article>
+
+        <!-- 4. duplicate_report() -->
+        <article class="function-doc-item" id="func-duplicate">
+          <div class="func-header">
+            <h3>pp.duplicate_report(df, subset=None, keep='first', return_records=False)</h3>
+            <span class="badge-tag">Duplicate Detection</span>
+          </div>
+          <p class="func-desc">
+            Detects duplicate rows across the entire dataset or specific key subsets, or returns duplicate records directly with <code>return_records=True</code>.
+          </p>
+          <div class="code-panel">
+            <div class="panel-header">
+              <span style="font-size: 0.85rem; color: var(--text-muted);">duplicate_report Example</span>
+              <button class="copy-btn">Copy</button>
+            </div>
+            <pre class="code-block"><code># 1. Summary report
+print(pp.duplicate_report(df))
+
+# 2. Extract duplicate records directly for inspection:
+dups = pp.duplicate_report(df, return_records=True)
+print(dups)</code></pre>
+          </div>
+        </article>
+
+        <!-- 5. unique_report() -->
+        <article class="function-doc-item" id="func-unique">
+          <div class="func-header">
+            <h3>pp.unique_report(df, dropna=False)</h3>
+            <span class="badge-tag">Cardinality Audit</span>
+          </div>
+          <p class="func-desc">
+            Audits column cardinality into six standardized tiers (<code>Constant</code>, <code>Low</code>, <code>Medium</code>, <code>High</code>, <code>Very High</code>, <code>Very High (Unique)</code>), flagging zero-variance features and candidate identifiers.
+          </p>
+          <div class="code-panel">
+            <div class="panel-header">
+              <span style="font-size: 0.85rem; color: var(--text-muted);">unique_report Example</span>
+              <button class="copy-btn">Copy</button>
+            </div>
+            <pre class="code-block"><code>unique_profile = pp.unique_report(df)
+print(unique_profile[["Column", "Unique Values", "Cardinality", "Status", "Suggestion"]])</code></pre>
+          </div>
+        </article>
+
+        <!-- 6. numeric_summary() -->
+        <article class="function-doc-item" id="func-numeric">
+          <div class="func-header">
+            <h3>pp.numeric_summary(df, extended=False, percentiles=None)</h3>
+            <span class="badge-tag">Numeric Statistics</span>
+          </div>
+          <p class="func-desc">
+            Computes 5-number summaries, mean, sample standard deviation, and optional distribution diagnostics: IQR, Fisher-Pearson skewness, kurtosis, zero/negative counts, and Tukey 1.5x IQR outliers.
+          </p>
+          <div class="code-panel">
+            <div class="panel-header">
+              <span style="font-size: 0.85rem; color: var(--text-muted);">numeric_summary Example</span>
+              <button class="copy-btn">Copy</button>
+            </div>
+            <pre class="code-block"><code># Extended statistics with 1st and 99th percentiles
+num_stats = pp.numeric_summary(df, extended=True, percentiles=[0.01, 0.99])
+print(num_stats[["Column", "Mean", "Median", "IQR", "Skewness", "Outliers", "P1", "P99"]])</code></pre>
+          </div>
+        </article>
+
+        <!-- 7. schema_report() -->
+        <article class="function-doc-item" id="func-schema">
+          <div class="func-header">
+            <h3>pp.schema_report(df, schema, allow_unexpected=True)</h3>
+            <span class="badge-tag">Schema Validation</span>
+          </div>
+          <p class="func-desc">
+            Enforces data contracts by validating column presence, expected types, nullability, uniqueness, and unexpected columns.
+          </p>
+          <div class="code-panel">
+            <div class="panel-header">
+              <span style="font-size: 0.85rem; color: var(--text-muted);">schema_report Example</span>
+              <button class="copy-btn">Copy</button>
+            </div>
+            <pre class="code-block"><code>schema = {
+    "ID": {"type": "integer", "nullable": False, "unique": True},
+    "Name": "string",
+    "Salary": {"type": "numeric", "nullable": False},
+}
+validation = pp.schema_report(df, schema=schema, allow_unexpected=False)
+print(validation[["Column", "Check", "Status", "Message"]])</code></pre>
+          </div>
+        </article>
+
+        <!-- PrepixReport Class -->
+        <article class="function-doc-item" id="prepix-report-class">
+          <div class="func-header">
+            <h3>PrepixReport Object</h3>
+            <span class="badge-tag">Container</span>
+          </div>
+          <p class="func-desc">
+            Lightweight container holding all sub-reports. Provides <code>to_dict()</code> and <code>to_json(path, indent)</code> serialization for logging, REST APIs, or CI/CD pipelines.
+          </p>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <!-- Examples Section -->
+  <section class="doc-section" id="examples">
+    <div class="container">
+      <div class="section-head">
+        <h2>Runnable Code Examples</h2>
+        <p>Explore real-world scenarios included in the repository's <code>examples/</code> directory.</p>
+      </div>
+
+      <div class="grid-3">
+        <div class="feature-card">
+          <h4>quickstart.py</h4>
+          <p>Basic introduction to generating reports and accessing component DataFrames.</p>
+        </div>
+        <div class="feature-card">
+          <h4>business_dataset.py</h4>
+          <p>End-to-end departmental audit demonstrating duplicate, missing, and schema checks.</p>
+        </div>
+        <div class="feature-card">
+          <h4>missing_data.py</h4>
+          <p>Missing value audit, severity threshold tuning, and imputation guidance.</p>
+        </div>
+        <div class="feature-card">
+          <h4>duplicate_analysis.py</h4>
+          <p>Demonstrates full-row and key-subset duplicate detection and extraction.</p>
+        </div>
+        <div class="feature-card">
+          <h4>numerical_analysis.py</h4>
+          <p>Normal vs. skewed income distributions, custom percentiles, and Tukey outlier detection.</p>
+        </div>
+        <div class="feature-card">
+          <h4>schema_validation.py</h4>
+          <p>Compares compliant datasets with intentional violations in automated contracts.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- About Section -->
+  <footer class="site-footer" id="about">
+    <div class="container">
+      <div class="footer-grid">
+        <div class="footer-col">
+          <h5>About Prepix</h5>
+          <p>Prepix is an open-source Python library designed to bring clarity, transparency, and speed to exploratory data analysis and data contract verification.</p>
+        </div>
+        <div class="footer-col">
+          <h5>Documentation</h5>
+          <ul>
+            <li><a href="#overview">Overview</a></li>
+            <li><a href="#installation">Installation</a></li>
+            <li><a href="#documentation">API Reference</a></li>
+            <li><a href="#examples">Examples</a></li>
+          </ul>
+        </div>
+        <div class="footer-col">
+          <h5>Repository</h5>
+          <ul>
+            <li><a href="https://github.com/manishparihar3618/prepix" target="_blank" rel="noopener noreferrer">GitHub</a></li>
+            <li><a href="https://github.com/manishparihar3618/prepix/issues" target="_blank" rel="noopener noreferrer">Issues</a></li>
+            <li><a href="https://github.com/manishparihar3618/prepix/blob/main/CHANGELOG.md" target="_blank" rel="noopener noreferrer">Changelog</a></li>
+            <li><a href="https://github.com/manishparihar3618/prepix/blob/main/CONTRIBUTING.md" target="_blank" rel="noopener noreferrer">Contributing</a></li>
+          </ul>
+        </div>
+        <div class="footer-col">
+          <h5>License</h5>
+          <p>Released under the <a href="https://github.com/manishparihar3618/prepix/blob/main/LICENSE" target="_blank" rel="noopener noreferrer">MIT License</a>.</p>
+          <p style="margin-top: 0.5rem;">Copyright &copy; 2026 Manish Parihar.</p>
+        </div>
+      </div>
+      <div class="footer-bottom">
+        <div>Prepix v0.1.0 Beta &bull; Verified Quality Release Candidate</div>
+        <div>Built for Python Data Scientists &amp; Engineers</div>
+      </div>
+    </div>
+  </footer>
+
+  <script src="app.js"></script>
+</body>
+</html>

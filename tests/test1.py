@@ -7,6 +7,7 @@ from prepix import (
     missing_report,
     numeric_summary,
     report,
+    schema_report,
     unique_report,
 )
 
@@ -60,6 +61,18 @@ def run_manual_test():
     print("6. UNIFIED DATASET REPORT (pp.report(df)):")
     print("=" * 60)
     print(report(df))
+
+    print("\n" + "=" * 60)
+    print("7. SCHEMA VALIDATION REPORT (pp.schema_report(df, schema)):")
+    print("=" * 60)
+    demo_schema = {
+        "ID": {"type": "integer", "nullable": False, "unique": True},
+        "Name": "string",
+        "Age": {"type": "numeric", "nullable": False},
+        "Salary": "numeric",
+        "Company_Status": "string",
+    }
+    print(schema_report(df, schema=demo_schema, allow_unexpected=True))
 
 
 if __name__ == "__main__":

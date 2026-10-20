@@ -408,7 +408,7 @@ def duplicate_report(
     if return_records:
         if total_rows == 0:
             return df.iloc[0:0].copy()
-        return df[dup_mask].copy()
+        return df.iloc[dup_mask.to_numpy()].copy()
 
     return pd.DataFrame(
         [
@@ -525,7 +525,11 @@ def unique_report(df: pd.DataFrame, dropna: bool = False) -> pd.DataFrame:
             for x in ["id", "key", "code", "num", "number"]
         ) or col_str in ["id", "key", "code", "uuid", "guid"]
 
-        if unique_count == 1:
+        if unique_count == 0:
+            cardinality = "Empty"
+            status = "All Missing"
+            suggestion = "Column contains only missing values; consider dropping or imputing"
+        elif unique_count == 1:
             cardinality = "Constant"
             status = "Zero Variance"
             suggestion = "Consider reviewing column; constant value across all rows"
@@ -759,35 +763,35 @@ def numeric_summary(
                     else:
                         outliers_val = 0
 
-        row_dict: dict[str, Any] = {
-            "Column": column,
-            "Data Type": str(series.dtype),
-            "Count": valid_count,
-            "Missing Values": missing_count,
-            "Mean": mean_val,
-            "Median": median_val,
-            "Std": std_val,
-            "Min": min_val,
-            "Q1": q1_val,
-            "Q3": q3_val,
-            "Max": max_val,
-            "Range": range_val,
-        }
+            row_dict: dict[str, Any] = {
+                "Column": column,
+                "Data Type": str(series.dtype),
+                "Count": valid_count,
+                "Missing Values": missing_count,
+                "Mean": mean_val,
+                "Median": median_val,
+                "Std": std_val,
+                "Min": min_val,
+                "Q1": q1_val,
+                "Q3": q3_val,
+                "Max": max_val,
+                "Range": range_val,
+            }
 
-        if extended:
-            row_dict["IQR"] = iqr_val
-            row_dict["Skewness"] = skew_val
-            row_dict["Kurtosis"] = kurt_val
-            row_dict["Zeros"] = zeros_val
-            row_dict["Negatives"] = negatives_val
-            row_dict["Outliers"] = outliers_val
+            if extended:
+                row_dict["IQR"] = iqr_val
+                row_dict["Skewness"] = skew_val
+                row_dict["Kurtosis"] = kurt_val
+                row_dict["Zeros"] = zeros_val
+                row_dict["Negatives"] = negatives_val
+                row_dict["Outliers"] = outliers_val
 
-        for p in validated_percentiles:
-            p_pct = p * 100
-            p_col = f"P{int(p_pct)}" if p_pct.is_integer() else f"P{p_pct:.1f}"
-            row_dict[p_col] = series.quantile(p) if valid_count > 0 else np.nan
+            for p in validated_percentiles:
+                p_pct = p * 100
+                p_col = f"P{int(p_pct)}" if p_pct.is_integer() else f"P{p_pct:.1f}"
+                row_dict[p_col] = series.quantile(p) if valid_count > 0 else np.nan
 
-        report_rows.append(row_dict)
+            report_rows.append(row_dict)
 
     if not report_rows:
         return pd.DataFrame(columns=output_columns)
