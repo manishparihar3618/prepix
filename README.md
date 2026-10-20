@@ -212,7 +212,7 @@ python benchmark.py
 
 ## 📢 Release Status
 
-Prepix is currently at **v0.1.0 (Beta)**. Core functionality is complete and verified with 145 unit tests across diverse data scales and types. We are preparing for the first official PyPI release.
+Prepix v0.1.0 (Beta) is published on PyPI. Install it with pip install prepix. Core functionality is covered by automated tests; feedback and contributions are welcome.
 
 If you encounter any issues or have feedback, please open an issue on the [GitHub Issue Tracker](https://github.com/manishparihar3618/prepix/issues).
 
